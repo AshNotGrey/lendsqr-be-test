@@ -63,6 +63,15 @@ export async function authMiddleware(
     
     const token = parts[1];
     
+    if (!token) {
+      res.status(401).json({
+        success: false,
+        error: "Unauthorized",
+        message: "Token is required",
+      });
+      return;
+    }
+    
     // Import token utility
     const { verifyToken } = await import("../utils/token");
     

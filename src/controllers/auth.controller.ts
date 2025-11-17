@@ -8,7 +8,6 @@
 
 import { Request, Response, NextFunction } from "express";
 import { AuthService } from "../services/auth.service";
-import { logger } from "../utils/logger";
 
 /**
  * Authentication controller class

@@ -295,7 +295,65 @@ LOG_LEVEL=debug
 
 ## API Documentation
 
+### Interactive Swagger Documentation
+
+**Access the full interactive API documentation at:** `http://localhost:3000/api-docs`
+
+The API includes comprehensive Swagger/OpenAPI 3.0 documentation with:
+
+- **Interactive Testing:** Test all endpoints directly from your browser
+- **Complete Schemas:** Detailed request/response schemas for all endpoints
+- **Authentication Support:** Built-in authorization with Bearer token
+- **Request Examples:** Multiple examples for each endpoint
+- **Response Examples:** Success and error response examples
+- **Validation Rules:** All validation requirements documented
+
+#### Quick Start with Swagger
+
+1. **Start the application:**
+   ```bash
+   npm run dev
+   ```
+
+2. **Open Swagger UI:**
+   Navigate to `http://localhost:3000/api-docs`
+
+3. **Authenticate:**
+   - First, use the `POST /api/v1/auth/signup` or `POST /api/v1/auth/login` endpoint to get a token
+   - Click the "Authorize" button in Swagger UI
+   - Enter your token in the format: `Bearer <your-token>`
+   - Click "Authorize" to save
+
+4. **Test Endpoints:**
+   - Expand any endpoint
+   - Click "Try it out"
+   - Fill in the required parameters
+   - Click "Execute"
+   - View the response
+
+#### OpenAPI Specification
+
+Access the raw OpenAPI 3.0 specification in JSON format:
+```
+http://localhost:3000/api-docs.json
+```
+
+### API Overview
+
 Base URL: `http://localhost:3000/api/v1`
+
+#### Endpoint Summary
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/api/v1/auth/signup` | Register new user | No |
+| POST | `/api/v1/auth/login` | Login user | No |
+| GET | `/api/v1/users/:id` | Get user details | Yes |
+| POST | `/api/v1/wallets/:userId/fund` | Fund wallet | Yes |
+| POST | `/api/v1/wallets/:userId/withdraw` | Withdraw from wallet | Yes |
+| POST | `/api/v1/wallets/transfer` | Transfer between wallets | Yes |
+| GET | `/api/v1/wallets/:userId/balance` | Get wallet balance | Yes |
+| GET | `/api/v1/adjutor/karma/:type/:id` | Check blacklist status | Yes |
 
 ### Authentication Endpoints
 
@@ -646,11 +704,20 @@ lendsqr-wallet-backend/
 │   │   ├── index.ts               # Database connection
 │   │   ├── migrations/            # Database migrations
 │   │   └── seeds/                 # Seed data
+│   ├── docs/                      # API Documentation
+│   │   ├── swagger.config.ts      # Swagger configuration
+│   │   ├── index.ts               # Swagger setup
+│   │   └── schemas/               # OpenAPI schemas
+│   │       ├── common.schemas.ts
+│   │       ├── auth.schemas.ts
+│   │       ├── user.schemas.ts
+│   │       ├── wallet.schemas.ts
+│   │       └── adjutor.schemas.ts
 │   ├── routes/
-│   │   ├── auth.ts
-│   │   ├── users.ts
-│   │   ├── wallets.ts
-│   │   └── adjutor.ts
+│   │   ├── auth.ts                # Authentication routes (with Swagger docs)
+│   │   ├── users.ts               # User routes (with Swagger docs)
+│   │   ├── wallets.ts             # Wallet routes (with Swagger docs)
+│   │   └── adjutor.ts             # Adjutor routes (with Swagger docs)
 │   ├── controllers/
 │   │   ├── auth.controller.ts
 │   │   ├── user.controller.ts
@@ -715,6 +782,7 @@ For questions or support, contact [careers@lendsqr.com](mailto:careers@lendsqr.c
 ✅ Unit tests with Vitest  
 ✅ Clean code with JSDoc comments  
 ✅ Comprehensive README with ER diagram  
+✅ Interactive Swagger/OpenAPI 3.0 documentation  
 ✅ Deployment-ready structure  
 
 **Live Demo:** [Deployment URL will be added after deployment]

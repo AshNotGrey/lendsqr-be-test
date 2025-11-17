@@ -32,6 +32,7 @@ async function startServer(): Promise<void> {
       console.log(`   Port: ${config.port}`);
       console.log(`   URL: http://localhost:${config.port}`);
       console.log(`   API: http://localhost:${config.port}/api/v1`);
+      console.log(`   📚 Swagger UI: http://localhost:${config.port}/api-docs`);
       console.log("\n✅ Server is ready to accept connections\n");
     });
 

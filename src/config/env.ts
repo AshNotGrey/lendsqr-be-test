@@ -240,7 +240,7 @@ function loadConfig(): Config {
     console.error("See env.example for the complete list of required variables.\n");
     
     // Exit process in production, throw in test/development
-    if (process.env.NODE_ENV === "production") {
+    if (process.env['NODE_ENV'] === "production") {
       process.exit(1);
     }
     throw error;

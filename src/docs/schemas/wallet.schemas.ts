@@ -1,0 +1,414 @@
+/**
+ * Wallet OpenAPI Schema Definitions
+ * 
+ * Schema components for wallet operations including fund, withdraw,
+ * transfer, balance retrieval, and transaction objects.
+ * 
+ * @module docs/schemas/wallet
+ */
+
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     Wallet:
+ *       type: object
+ *       required:
+ *         - id
+ *         - userId
+ *         - balance
+ *         - currency
+ *         - createdAt
+ *         - updatedAt
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *           description: Unique wallet identifier
+ *           example: "660f9510-f39c-52e5-b827-557766551111"
+ *         userId:
+ *           type: string
+ *           format: uuid
+ *           description: Owner user ID
+ *           example: "550e8400-e29b-41d4-a716-446655440000"
+ *         balance:
+ *           type: string
+ *           description: Current wallet balance in decimal format (stored as DECIMAL(19,4))
+ *           example: "1500.50"
+ *         currency:
+ *           type: string
+ *           description: Currency code
+ *           example: "NGN"
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: Wallet creation timestamp
+ *           example: "2024-01-15T10:30:00.000Z"
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: Last update timestamp
+ *           example: "2024-01-15T10:30:00.000Z"
+ *       description: Wallet entity containing user balance information
+ * 
+ *     FundWalletRequest:
+ *       type: object
+ *       required:
+ *         - amount
+ *         - reference
+ *       properties:
+ *         amount:
+ *           type: number
+ *           format: double
+ *           minimum: 0.01
+ *           description: Amount to fund (must be positive)
+ *           example: 500.00
+ *         reference:
+ *           type: string
+ *           minLength: 1
+ *           maxLength: 80
+ *           description: Unique transaction reference for idempotency. Same reference cannot be used twice.
+ *           example: "FUND-20240115-123456"
+ *         metadata:
+ *           type: object
+ *           additionalProperties: true
+ *           description: Optional metadata for the transaction (stored as JSON)
+ *           example:
+ *             source: "bank_transfer"
+ *             description: "Salary payment"
+ *       description: Request payload for funding a wallet
+ * 
+ *     WithdrawWalletRequest:
+ *       type: object
+ *       required:
+ *         - amount
+ *         - reference
+ *       properties:
+ *         amount:
+ *           type: number
+ *           format: double
+ *           minimum: 0.01
+ *           description: Amount to withdraw (must be positive and not exceed balance)
+ *           example: 200.00
+ *         reference:
+ *           type: string
+ *           minLength: 1
+ *           maxLength: 80
+ *           description: Unique transaction reference for idempotency
+ *           example: "WITHDRAW-20240115-654321"
+ *         metadata:
+ *           type: object
+ *           additionalProperties: true
+ *           description: Optional metadata for the transaction (stored as JSON)
+ *           example:
+ *             destination: "bank_account"
+ *             accountNumber: "0123456789"
+ *       description: Request payload for withdrawing from a wallet
+ * 
+ *     TransferRequest:
+ *       type: object
+ *       required:
+ *         - fromUserId
+ *         - toUserId
+ *         - amount
+ *         - reference
+ *       properties:
+ *         fromUserId:
+ *           type: string
+ *           format: uuid
+ *           description: Sender's user ID (must have sufficient balance)
+ *           example: "550e8400-e29b-41d4-a716-446655440000"
+ *         toUserId:
+ *           type: string
+ *           format: uuid
+ *           description: Recipient's user ID (must be different from sender)
+ *           example: "770e8400-e29b-41d4-a716-446655440111"
+ *         amount:
+ *           type: number
+ *           format: double
+ *           minimum: 0.01
+ *           description: Amount to transfer (must be positive and not exceed sender's balance)
+ *           example: 300.00
+ *         reference:
+ *           type: string
+ *           minLength: 1
+ *           maxLength: 80
+ *           description: Unique transaction reference for idempotency
+ *           example: "TRANSFER-20240115-789012"
+ *         metadata:
+ *           type: object
+ *           additionalProperties: true
+ *           description: Optional metadata for the transaction (stored as JSON)
+ *           example:
+ *             reason: "payment"
+ *             description: "Invoice #12345"
+ *       description: Request payload for transferring funds between wallets
+ * 
+ *     Transaction:
+ *       type: object
+ *       required:
+ *         - id
+ *         - walletId
+ *         - type
+ *         - amount
+ *         - balanceBefore
+ *         - balanceAfter
+ *         - reference
+ *         - status
+ *         - createdAt
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *           description: Unique transaction identifier
+ *           example: "880e8400-e29b-41d4-a716-446655440222"
+ *         walletId:
+ *           type: string
+ *           format: uuid
+ *           description: Associated wallet ID
+ *           example: "660f9510-f39c-52e5-b827-557766551111"
+ *         type:
+ *           type: string
+ *           enum: [fund, withdraw]
+ *           description: Transaction type
+ *           example: "fund"
+ *         amount:
+ *           type: string
+ *           description: Transaction amount in decimal format
+ *           example: "500.00"
+ *         balanceBefore:
+ *           type: string
+ *           description: Wallet balance before transaction
+ *           example: "1000.00"
+ *         balanceAfter:
+ *           type: string
+ *           description: Wallet balance after transaction
+ *           example: "1500.00"
+ *         reference:
+ *           type: string
+ *           description: Unique transaction reference (ensures idempotency)
+ *           example: "FUND-20240115-123456"
+ *         status:
+ *           type: string
+ *           enum: [pending, completed, failed]
+ *           description: Transaction status
+ *           example: "completed"
+ *         metadata:
+ *           type: object
+ *           nullable: true
+ *           description: Optional transaction metadata
+ *           example:
+ *             source: "bank_transfer"
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: Transaction creation timestamp
+ *           example: "2024-01-15T10:30:00.000Z"
+ *       description: Transaction record for fund/withdraw operations
+ * 
+ *     Transfer:
+ *       type: object
+ *       required:
+ *         - id
+ *         - fromWalletId
+ *         - toWalletId
+ *         - amount
+ *         - reference
+ *         - status
+ *         - createdAt
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *           description: Unique transfer identifier
+ *           example: "990e8400-e29b-41d4-a716-446655440333"
+ *         fromWalletId:
+ *           type: string
+ *           format: uuid
+ *           description: Sender's wallet ID
+ *           example: "660f9510-f39c-52e5-b827-557766551111"
+ *         toWalletId:
+ *           type: string
+ *           format: uuid
+ *           description: Recipient's wallet ID
+ *           example: "770f9510-f39c-52e5-b827-557766551222"
+ *         amount:
+ *           type: string
+ *           description: Transfer amount in decimal format
+ *           example: "300.00"
+ *         reference:
+ *           type: string
+ *           description: Unique transfer reference (ensures idempotency)
+ *           example: "TRANSFER-20240115-789012"
+ *         status:
+ *           type: string
+ *           enum: [pending, completed, failed]
+ *           description: Transfer status
+ *           example: "completed"
+ *         metadata:
+ *           type: object
+ *           nullable: true
+ *           description: Optional transfer metadata
+ *           example:
+ *             reason: "payment"
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: Transfer creation timestamp
+ *           example: "2024-01-15T10:30:00.000Z"
+ *       description: Transfer record for peer-to-peer transactions
+ * 
+ *     FundWalletResponse:
+ *       type: object
+ *       required:
+ *         - success
+ *         - message
+ *         - data
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           example: true
+ *         message:
+ *           type: string
+ *           example: "Wallet funded successfully"
+ *         data:
+ *           type: object
+ *           required:
+ *             - transaction
+ *             - wallet
+ *           properties:
+ *             transaction:
+ *               $ref: '#/components/schemas/Transaction'
+ *             wallet:
+ *               $ref: '#/components/schemas/Wallet'
+ *       description: Successful wallet funding response
+ * 
+ *     WithdrawWalletResponse:
+ *       type: object
+ *       required:
+ *         - success
+ *         - message
+ *         - data
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           example: true
+ *         message:
+ *           type: string
+ *           example: "Withdrawal successful"
+ *         data:
+ *           type: object
+ *           required:
+ *             - transaction
+ *             - wallet
+ *           properties:
+ *             transaction:
+ *               $ref: '#/components/schemas/Transaction'
+ *             wallet:
+ *               $ref: '#/components/schemas/Wallet'
+ *       description: Successful withdrawal response
+ * 
+ *     TransferResponse:
+ *       type: object
+ *       required:
+ *         - success
+ *         - message
+ *         - data
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           example: true
+ *         message:
+ *           type: string
+ *           example: "Transfer completed successfully"
+ *         data:
+ *           type: object
+ *           required:
+ *             - transfer
+ *             - fromWallet
+ *             - toWallet
+ *           properties:
+ *             transfer:
+ *               $ref: '#/components/schemas/Transfer'
+ *             fromWallet:
+ *               $ref: '#/components/schemas/Wallet'
+ *             toWallet:
+ *               $ref: '#/components/schemas/Wallet'
+ *       description: Successful transfer response
+ * 
+ *     GetBalanceResponse:
+ *       type: object
+ *       required:
+ *         - success
+ *         - message
+ *         - data
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           example: true
+ *         message:
+ *           type: string
+ *           example: "Balance retrieved successfully"
+ *         data:
+ *           type: object
+ *           required:
+ *             - wallet
+ *           properties:
+ *             wallet:
+ *               $ref: '#/components/schemas/Wallet'
+ *       description: Successful balance retrieval response
+ * 
+ *     InsufficientBalanceResponse:
+ *       type: object
+ *       required:
+ *         - success
+ *         - error
+ *         - message
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           example: false
+ *         error:
+ *           type: string
+ *           example: "Bad Request"
+ *         message:
+ *           type: string
+ *           example: "Insufficient wallet balance"
+ *         details:
+ *           type: object
+ *           properties:
+ *             currentBalance:
+ *               type: string
+ *               example: "100.00"
+ *             requestedAmount:
+ *               type: string
+ *               example: "200.00"
+ *       description: Response when wallet has insufficient balance for operation
+ * 
+ *     DuplicateReferenceResponse:
+ *       type: object
+ *       required:
+ *         - success
+ *         - error
+ *         - message
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           example: false
+ *         error:
+ *           type: string
+ *           example: "Conflict"
+ *         message:
+ *           type: string
+ *           example: "Transaction reference already exists"
+ *         details:
+ *           type: object
+ *           properties:
+ *             reference:
+ *               type: string
+ *               example: "FUND-20240115-123456"
+ *       description: Response when trying to reuse a transaction reference (idempotency check)
+ */
+
+export {};
+

@@ -27,14 +27,14 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable("transfers", (table) => {
     // Primary key - UUID format
     table
-      .char("id", 36)
+      .string("id", 36)
       .primary()
       .notNullable()
       .comment("Transfer unique identifier");
 
     // Source wallet foreign key
     table
-      .char("from_wallet_id", 36)
+      .string("from_wallet_id", 36)
       .notNullable()
       .comment("Source wallet ID");
     table
@@ -45,7 +45,7 @@ export async function up(knex: Knex): Promise<void> {
 
     // Destination wallet foreign key
     table
-      .char("to_wallet_id", 36)
+      .string("to_wallet_id", 36)
       .notNullable()
       .comment("Destination wallet ID");
     table
@@ -99,12 +99,9 @@ export async function up(knex: Knex): Promise<void> {
     CHECK (amount_decimal > 0)
   `);
 
-  // Add check constraint to prevent self-transfers
-  await knex.raw(`
-    ALTER TABLE transfers
-    ADD CONSTRAINT chk_transfer_no_self_transfer
-    CHECK (from_wallet_id != to_wallet_id)
-  `);
+  // Note: Self-transfer prevention (from_wallet_id != to_wallet_id) is handled
+  // in application logic because MySQL doesn't allow CHECK constraints on
+  // columns that are part of foreign keys with CASCADE referential actions.
 
   console.log("✅ Created transfers table");
 }

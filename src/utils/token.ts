@@ -77,6 +77,11 @@ export function verifyToken(token: string): TokenPayload {
   
   const [prefix, userId, nonce, providedSignature] = parts;
   
+  // Validate all parts exist
+  if (!prefix || !userId || !nonce || !providedSignature) {
+    throw new Error("Invalid token format: missing required parts");
+  }
+  
   // Validate prefix
   if (prefix !== "candidate") {
     throw new Error("Invalid token prefix");

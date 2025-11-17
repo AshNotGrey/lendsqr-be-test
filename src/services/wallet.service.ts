@@ -401,7 +401,7 @@ export class WalletService {
       }
 
       // Lock both wallets in ascending order by user_id to prevent deadlocks
-      const lockOrder = fromUserId < toUserId 
+      const lockOrder: [string, string] = fromUserId < toUserId 
         ? [fromUserId, toUserId] 
         : [toUserId, fromUserId];
 

@@ -34,6 +34,15 @@ export class AdjutorController {
     try {
       const { identityType, identity } = req.params;
 
+      if (!identity || !identityType) {
+        res.status(400).json({
+          success: false,
+          error: "Validation Error",
+          message: "Identity and identityType are required",
+        });
+        return;
+      }
+
       // Check Karma
       const result = await AdjutorService.checkKarma(
         identity,

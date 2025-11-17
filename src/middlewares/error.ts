@@ -13,12 +13,15 @@ import { config } from "../config/env";
  * Custom application error class
  */
 export class AppError extends Error {
+  public override message: string;
+  
   constructor(
     public statusCode: number,
-    public message: string,
+    message: string,
     public isOperational: boolean = true
   ) {
     super(message);
+    this.message = message;
     Object.setPrototypeOf(this, AppError.prototype);
     Error.captureStackTrace(this, this.constructor);
   }
@@ -36,18 +39,16 @@ export function errorHandler(
   err: Error | AppError,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ): void {
   // Default error values
   let statusCode = 500;
   let message = "Internal Server Error";
-  let isOperational = false;
 
   // Handle AppError instances
   if (err instanceof AppError) {
     statusCode = err.statusCode;
     message = err.message;
-    isOperational = err.isOperational;
   }
 
   // Log error

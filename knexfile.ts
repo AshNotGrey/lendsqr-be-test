@@ -118,7 +118,7 @@ const knexConfig: { [key: string]: Knex.Config } = {
 export default knexConfig;
 
 // Also export individual environment configs for direct access
-export const development = knexConfig.development;
-export const production = knexConfig.production;
-export const test = knexConfig.test;
+export const development = knexConfig['development'];
+export const production = knexConfig['production'];
+export const test = knexConfig['test'];
 

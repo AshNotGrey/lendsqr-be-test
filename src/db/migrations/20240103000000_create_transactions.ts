@@ -28,14 +28,14 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable("transactions", (table) => {
     // Primary key - UUID format
     table
-      .char("id", 36)
+      .string("id", 36)
       .primary()
       .notNullable()
       .comment("Transaction unique identifier");
 
     // Foreign key to wallets
     table
-      .char("wallet_id", 36)
+      .string("wallet_id", 36)
       .notNullable()
       .comment("Wallet ID this transaction belongs to");
     table

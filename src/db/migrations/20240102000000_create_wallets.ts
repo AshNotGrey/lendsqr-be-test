@@ -23,11 +23,11 @@ import { Knex } from "knex";
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable("wallets", (table) => {
     // Primary key - UUID format
-    table.char("id", 36).primary().notNullable().comment("Wallet unique identifier");
+    table.string("id", 36).primary().notNullable().comment("Wallet unique identifier");
 
     // Foreign key to users (one-to-one relationship)
     table
-      .char("user_id", 36)
+      .string("user_id", 36)
       .notNullable()
       .unique()
       .comment("User ID (one wallet per user)");

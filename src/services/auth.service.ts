@@ -94,7 +94,7 @@ export class AuthService {
     }
 
     // Create user and wallet in transaction
-    const { user, wallet } = await withTransaction(async (trx) => {
+    const { user } = await withTransaction(async (trx) => {
       // Create user
       const userId = newId();
       const [createdUser] = await trx("users")
@@ -110,13 +110,12 @@ export class AuthService {
         .returning("*");
 
       // Create wallet for user
-      const createdWallet = await WalletService.createWallet(userId, trx);
+      await WalletService.createWallet(userId, trx);
 
       logger.info(`User created successfully: ${userId}`);
 
       return {
         user: createdUser,
-        wallet: createdWallet,
       };
     });
 

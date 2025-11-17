@@ -19,6 +19,9 @@ import adjutorRoutes from "./routes/adjutor";
 // Import middlewares
 import { errorHandler } from "./middlewares/error";
 
+// Import Swagger documentation
+import { swaggerUiServe, swaggerUiSetup, openApiSpec } from "./docs";
+
 /**
  * Create and configure Express application
  */
@@ -35,7 +38,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Add security headers
-app.use((req: Request, res: Response, next: NextFunction) => {
+app.use((_req: Request, res: Response, next: NextFunction) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("X-XSS-Protection", "1; mode=block");
@@ -44,7 +47,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 // Request logging middleware (development only)
 if (config.nodeEnv === "development") {
-  app.use((req: Request, res: Response, next: NextFunction) => {
+  app.use((req: Request, _res: Response, next: NextFunction) => {
     console.log(`${req.method} ${req.path}`);
     next();
   });
@@ -54,7 +57,7 @@ if (config.nodeEnv === "development") {
  * Health Check Endpoint
  * Used by deployment platforms and monitoring tools
  */
-app.get("/health", (req: Request, res: Response) => {
+app.get("/health", (_req: Request, res: Response) => {
   res.status(200).json({
     status: "ok",
     timestamp: new Date().toISOString(),
@@ -67,13 +70,34 @@ app.get("/health", (req: Request, res: Response) => {
  * Root Endpoint
  * Provides basic API information
  */
-app.get("/", (req: Request, res: Response) => {
+app.get("/", (_req: Request, res: Response) => {
   res.status(200).json({
     message: "Lendsqr Wallet Backend API",
     version: "1.0.0",
-    documentation: "/api/v1",
+    documentation: "/api-docs",
+    apiDocs: "/api-docs.json",
+    apiRoot: "/api/v1",
     health: "/health",
   });
+});
+
+/**
+ * Swagger API Documentation
+ * Interactive API documentation using Swagger UI
+ * 
+ * Access at: /api-docs
+ */
+app.use("/api-docs", swaggerUiServe, swaggerUiSetup);
+
+/**
+ * OpenAPI Specification (JSON)
+ * Raw OpenAPI 3.0 specification in JSON format
+ * 
+ * Access at: /api-docs.json
+ */
+app.get("/api-docs.json", (_req: Request, res: Response) => {
+  res.setHeader("Content-Type", "application/json");
+  res.status(200).json(openApiSpec);
 });
 
 /**
@@ -86,7 +110,7 @@ app.use("/api/v1/wallets", walletRoutes);
 app.use("/api/v1/adjutor", adjutorRoutes);
 
 // API root endpoint
-app.get("/api/v1", (req: Request, res: Response) => {
+app.get("/api/v1", (_req: Request, res: Response) => {
   res.status(200).json({
     message: "Lendsqr Wallet API v1",
     version: "1.0.0",

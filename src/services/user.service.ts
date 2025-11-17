@@ -7,7 +7,6 @@
  */
 
 import { knex } from "../db";
-import { logger } from "../utils/logger";
 
 /**
  * User data interface

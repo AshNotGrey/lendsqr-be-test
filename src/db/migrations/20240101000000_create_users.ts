@@ -25,7 +25,7 @@ import { Knex } from "knex";
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable("users", (table) => {
     // Primary key - UUID format
-    table.char("id", 36).primary().notNullable().comment("User unique identifier");
+    table.string("id", 36).primary().notNullable().comment("User unique identifier");
 
     // User information
     table.string("name", 100).notNullable().comment("User full name");

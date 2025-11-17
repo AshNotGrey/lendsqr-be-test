@@ -30,6 +30,15 @@ export class UserController {
     try {
       const { id } = req.params;
 
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          error: "Validation Error",
+          message: "User ID is required",
+        });
+        return;
+      }
+
       // Fetch user
       const user = await UserService.getUserById(id);
 

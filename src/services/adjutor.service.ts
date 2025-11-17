@@ -131,7 +131,7 @@ export class AdjutorService {
           karma_identity: identity,
           amount_in_contention: "50000.00",
           reason: "Default on loan repayment",
-          default_date: new Date().toISOString().split("T")[0],
+          default_date: new Date().toISOString().split("T")[0] as string,
           karma_type: {
             karma: "Loan Default",
           },

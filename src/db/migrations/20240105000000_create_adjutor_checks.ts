@@ -27,14 +27,14 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable("adjutor_checks", (table) => {
     // Primary key - UUID format
     table
-      .char("id", 36)
+      .string("id", 36)
       .primary()
       .notNullable()
       .comment("Check record unique identifier");
 
     // Foreign key to users
     table
-      .char("user_id", 36)
+      .string("user_id", 36)
       .notNullable()
       .comment("User ID this check belongs to");
     table

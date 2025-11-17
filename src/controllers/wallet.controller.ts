@@ -36,6 +36,15 @@ export class WalletController {
       const { userId } = req.params;
       const { amount, reference, metadata } = req.body;
 
+      if (!userId) {
+        res.status(400).json({
+          success: false,
+          error: "Validation Error",
+          message: "User ID is required",
+        });
+        return;
+      }
+
       // Fund wallet
       const result = await WalletService.fund(userId, amount, reference, metadata);
 
@@ -83,6 +92,15 @@ export class WalletController {
     try {
       const { userId } = req.params;
       const { amount, reference, metadata } = req.body;
+
+      if (!userId) {
+        res.status(400).json({
+          success: false,
+          error: "Validation Error",
+          message: "User ID is required",
+        });
+        return;
+      }
 
       // Withdraw from wallet
       const result = await WalletService.withdraw(userId, amount, reference, metadata);
@@ -188,6 +206,15 @@ export class WalletController {
   ): Promise<void> {
     try {
       const { userId } = req.params;
+
+      if (!userId) {
+        res.status(400).json({
+          success: false,
+          error: "Validation Error",
+          message: "User ID is required",
+        });
+        return;
+      }
 
       // Get balance
       const result = await WalletService.getBalance(userId);
