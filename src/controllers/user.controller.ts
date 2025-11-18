@@ -18,6 +18,9 @@ export class UserController {
    * 
    * GET /api/v1/users/:id
    * 
+   * **Security:** Users can only view their own details.
+   * Returns 403 Forbidden if attempting to access another user's details.
+   * 
    * @param req - Express request object
    * @param res - Express response object
    * @param next - Express next function
@@ -29,12 +32,23 @@ export class UserController {
   ): Promise<void> {
     try {
       const { id } = req.params;
+      const authenticatedUserId = req.user?.id; // Set by authMiddleware
 
       if (!id) {
         res.status(400).json({
           success: false,
           error: "Validation Error",
           message: "User ID is required",
+        });
+        return;
+      }
+
+      // Security check: Users can only view their own details
+      if (id !== authenticatedUserId) {
+        res.status(403).json({
+          success: false,
+          error: "Forbidden",
+          message: "You can only access your own user details",
         });
         return;
       }

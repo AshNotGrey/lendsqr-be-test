@@ -143,24 +143,6 @@ export class WalletService {
   }
 
   /**
-   * Check if a transaction reference already exists (idempotency check)
-   * 
-   * @param reference - Transaction reference
-   * @param trx - Knex transaction
-   * @returns Existing transaction or null
-   */
-  private static async checkIdempotency(
-    reference: string,
-    trx: Knex.Transaction
-  ): Promise<Transaction | null> {
-    const existing = await trx("transactions")
-      .where({ reference })
-      .first();
-
-    return existing || null;
-  }
-
-  /**
    * Fund a wallet (credit)
    * 
    * Adds money to a user's wallet in a transaction-safe manner.

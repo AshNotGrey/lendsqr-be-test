@@ -43,14 +43,6 @@ const amountSchema = z
   .positive("Amount must be positive")
   .finite("Amount must be a finite number");
 
-/**
- * Reference validation schema
- */
-const referenceSchema = z
-  .string()
-  .min(1, "Reference is required")
-  .max(80, "Reference must be at most 80 characters");
-
 // ==================== Auth Schemas ====================
 
 /**

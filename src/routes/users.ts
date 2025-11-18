@@ -26,10 +26,15 @@ const router = Router();
  *       
  *       **Authentication:** Required (Bearer token)
  *       
+ *       **Security:**
+ *       - Users can ONLY view their own details
+ *       - Returns 403 Forbidden if attempting to access another user's information
+ *       - This protects user privacy and prevents PII enumeration
+ *       
  *       **Notes:**
  *       - Returns basic user profile information
  *       - Does not include sensitive data like BVN
- *       - User must be authenticated to access this endpoint
+ *       - The `id` parameter must match the authenticated user's ID
  *     operationId: getUserById
  *     security:
  *       - BearerAuth: []
@@ -79,6 +84,22 @@ const router = Router();
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/UnauthorizedResponse'
+ *       403:
+ *         description: Forbidden - Attempting to access another user's details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "Forbidden"
+ *                 message:
+ *                   type: string
+ *                   example: "You can only access your own user details"
  *       404:
  *         description: User not found
  *         content:
