@@ -53,6 +53,9 @@ interface Config {
     
     /** Request timeout in milliseconds */
     timeout: number;
+    
+    /** Skip Karma check (FOR TESTING ONLY - DO NOT USE IN PRODUCTION) */
+    skipCheck: boolean;
   };
   
   /** Logging configuration */
@@ -209,12 +212,31 @@ function loadConfig(): Config {
       30000
     );
     
+    // Check if Karma check should be skipped (for testing only)
+    const skipKarmaCheck = getEnvVar("SKIP_KARMA_CHECK", "false").toLowerCase() === "true";
+    
     // Warn if using mock mode in production
     if (nodeEnv === "production" && adjutorMode === "mock") {
       console.warn(
         "⚠️  WARNING: ADJUTOR_MODE is set to 'mock' in production environment. " +
         "This should only be used for testing!"
       );
+    }
+    
+    // Warn if skipping Karma check
+    if (skipKarmaCheck) {
+      console.warn(
+        "⚠️  WARNING: SKIP_KARMA_CHECK is enabled - Adjutor Karma blacklist check is DISABLED!"
+      );
+      console.warn(
+        "   This should ONLY be used for testing. NEVER enable this in production!"
+      );
+      if (nodeEnv === "production") {
+        throw new Error(
+          "SKIP_KARMA_CHECK cannot be enabled in production environment. " +
+          "This is a security risk and violates the assessment requirements."
+        );
+      }
     }
     
     const logLevel = getEnvVar("LOG_LEVEL", "info");
@@ -229,6 +251,7 @@ function loadConfig(): Config {
         apiKey: adjutorApiKey,
         mode: adjutorMode,
         timeout: adjutorTimeout,
+        skipCheck: skipKarmaCheck,
       },
       logLevel,
     };

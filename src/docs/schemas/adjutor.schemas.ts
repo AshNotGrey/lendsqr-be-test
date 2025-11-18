@@ -59,6 +59,18 @@
  *                 message:
  *                   type: string
  *                   example: "No negative records found"
+ *                 detectedIdentityType:
+ *                   type: string
+ *                   description: Identity type auto-detected by Adjutor API
+ *                   example: "BVN"
+ *                 cost:
+ *                   type: number
+ *                   description: API call cost in credits
+ *                   example: 10
+ *                 balance:
+ *                   type: number
+ *                   description: Remaining Adjutor account balance
+ *                   example: 9990
  *       description: Successful Adjutor Karma blacklist check response
  * 
  *     KarmaBlacklistedResponse:
@@ -110,6 +122,41 @@
  *                 message:
  *                   type: string
  *                   example: "User has negative credit history"
+ *                 karmaType:
+ *                   type: string
+ *                   description: Type of negative karma record
+ *                   example: "Loan Default"
+ *                 amountInContention:
+ *                   type: string
+ *                   description: Amount involved in the blacklist record
+ *                   example: "50000.00"
+ *                 defaultDate:
+ *                   type: string
+ *                   format: date
+ *                   description: Date of the default/incident
+ *                   example: "2024-01-15"
+ *                 reportingEntity:
+ *                   type: object
+ *                   description: Entity that reported this blacklist record
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                       example: "ABC Lending Company"
+ *                     email:
+ *                       type: string
+ *                       example: "[email protected]"
+ *                 detectedIdentityType:
+ *                   type: string
+ *                   description: Identity type auto-detected by Adjutor API
+ *                   example: "BVN"
+ *                 cost:
+ *                   type: number
+ *                   description: API call cost in credits
+ *                   example: 10
+ *                 balance:
+ *                   type: number
+ *                   description: Remaining Adjutor account balance
+ *                   example: 9990
  *       description: Response when identity is found in Adjutor Karma blacklist
  * 
  *     AdjutorApiErrorResponse:

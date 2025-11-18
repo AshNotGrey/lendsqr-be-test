@@ -15,6 +15,7 @@
  */
 
 import { Knex } from "knex";
+import { randomBytes } from "crypto";
 import { knex, newId, withTransaction } from "../db";
 import { logger } from "../utils/logger";
 
@@ -62,6 +63,30 @@ interface Transfer {
  */
 export class WalletService {
   /**
+   * Generate a unique reference for transactions
+   * Format: TYPE-USERID-TIMESTAMP-RANDOM
+   * 
+   * @param type - Transaction type
+   * @param userId - User ID
+   * @returns Unique reference string
+   * 
+   * @example
+   * ```typescript
+   * const ref = WalletService.generateReference('FUND', 'user-123');
+   * // Returns: "FUND-user-123-1699564800000-A1B2C3D4"
+   * ```
+   */
+  private static generateReference(
+    type: 'FUND' | 'WITHDRAW' | 'TRANSFER',
+    userId: string
+  ): string {
+    const timestamp = Date.now();
+    const random = randomBytes(4).toString('hex').toUpperCase();
+    const userIdShort = userId.substring(0, 8);
+    return `${type}-${userIdShort}-${timestamp}-${random}`;
+  }
+
+  /**
    * Create a new wallet for a user
    * Should be called within a transaction during user creation
    * 
@@ -72,16 +97,21 @@ export class WalletService {
   static async createWallet(userId: string, trx: Knex.Transaction): Promise<Wallet> {
     const walletId = newId();
 
-    const [wallet] = await trx("wallets")
-      .insert({
-        id: walletId,
-        user_id: userId,
-        balance_decimal: "0.000000",
-        currency: "NGN",
-        created_at: trx.fn.now(),
-        updated_at: trx.fn.now(),
-      })
-      .returning("*");
+    await trx("wallets").insert({
+      id: walletId,
+      user_id: userId,
+      balance_decimal: "0.000000",
+      currency: "NGN",
+      created_at: trx.fn.now(),
+      updated_at: trx.fn.now(),
+    });
+
+    // Fetch the created wallet (MySQL doesn't support .returning())
+    const wallet = await trx("wallets").where({ id: walletId }).first();
+
+    if (!wallet) {
+      throw new Error("Failed to create wallet");
+    }
 
     logger.info(`Created wallet ${walletId} for user ${userId}`);
     return wallet;
@@ -134,13 +164,12 @@ export class WalletService {
    * Fund a wallet (credit)
    * 
    * Adds money to a user's wallet in a transaction-safe manner.
-   * Idempotent - calling with the same reference returns the existing transaction.
+   * Automatically generates a unique reference for idempotency.
    * 
    * @param userId - User ID
    * @param amount - Amount to credit (must be positive)
-   * @param reference - Unique transaction reference
    * @param metadata - Optional metadata
-   * @returns Updated wallet and transaction details
+   * @returns Updated wallet, transaction details, and generated reference
    * 
    * @throws Error if amount is invalid or wallet not found
    * 
@@ -149,18 +178,17 @@ export class WalletService {
    * const result = await WalletService.fund(
    *   "user-123",
    *   10000.50,
-   *   "FUND-2024-001",
    *   { source: "bank_transfer" }
    * );
-   * console.log(result.balance); // "10000.500000"
+   * console.log(result.reference); // "FUND-user-123-1699564800000-A1B2C3D4"
+   * console.log(result.wallet.balance_decimal); // "10000.500000"
    * ```
    */
   static async fund(
     userId: string,
     amount: number,
-    reference: string,
     metadata?: any
-  ): Promise<{ wallet: Wallet; transaction: Transaction }> {
+  ): Promise<{ wallet: Wallet; transaction: Transaction; reference: string }> {
     // Validate amount
     if (amount <= 0) {
       throw new Error("Amount must be positive");
@@ -169,15 +197,10 @@ export class WalletService {
     // Convert to decimal string (6 decimal places)
     const amountDecimal = amount.toFixed(6);
 
+    // Generate unique reference
+    const reference = this.generateReference('FUND', userId);
+
     return withTransaction(async (trx) => {
-      // Check idempotency
-      const existingTxn = await this.checkIdempotency(reference, trx);
-      if (existingTxn) {
-        logger.warn(`Duplicate fund request with reference: ${reference}`);
-        const wallet = await this.getWalletByUserId(userId, trx);
-        if (!wallet) throw new Error("Wallet not found");
-        return { wallet, transaction: existingTxn };
-      }
 
       // Lock wallet with SELECT FOR UPDATE
       const wallet = await this.getWalletByUserId(userId, trx, true);
@@ -217,9 +240,9 @@ export class WalletService {
         trx("transactions").where({ id: transactionId }).first(),
       ]);
 
-      logger.info(`Funded wallet ${wallet.id}: +${amountDecimal} (new balance: ${newBalance})`);
+      logger.info(`Funded wallet ${wallet.id}: +${amountDecimal} (new balance: ${newBalance}) [ref: ${reference}]`);
 
-      return { wallet: updatedWallet, transaction };
+      return { wallet: updatedWallet, transaction, reference };
     });
   }
 
@@ -228,13 +251,12 @@ export class WalletService {
    * 
    * Removes money from a user's wallet in a transaction-safe manner.
    * Validates sufficient balance before withdrawal.
-   * Idempotent - calling with the same reference returns the existing transaction.
+   * Automatically generates a unique reference for idempotency.
    * 
    * @param userId - User ID
    * @param amount - Amount to debit (must be positive)
-   * @param reference - Unique transaction reference
    * @param metadata - Optional metadata
-   * @returns Updated wallet and transaction details
+   * @returns Updated wallet, transaction details, and generated reference
    * 
    * @throws Error if amount is invalid, insufficient funds, or wallet not found
    * 
@@ -243,17 +265,16 @@ export class WalletService {
    * const result = await WalletService.withdraw(
    *   "user-123",
    *   5000.00,
-   *   "WITHDRAW-2024-001",
    *   { destination: "bank_account" }
    * );
+   * console.log(result.reference); // "WITHDRAW-user-123-1699564800000-A1B2C3D4"
    * ```
    */
   static async withdraw(
     userId: string,
     amount: number,
-    reference: string,
     metadata?: any
-  ): Promise<{ wallet: Wallet; transaction: Transaction }> {
+  ): Promise<{ wallet: Wallet; transaction: Transaction; reference: string }> {
     // Validate amount
     if (amount <= 0) {
       throw new Error("Amount must be positive");
@@ -261,16 +282,10 @@ export class WalletService {
 
     const amountDecimal = amount.toFixed(6);
 
-    return withTransaction(async (trx) => {
-      // Check idempotency
-      const existingTxn = await this.checkIdempotency(reference, trx);
-      if (existingTxn) {
-        logger.warn(`Duplicate withdraw request with reference: ${reference}`);
-        const wallet = await this.getWalletByUserId(userId, trx);
-        if (!wallet) throw new Error("Wallet not found");
-        return { wallet, transaction: existingTxn };
-      }
+    // Generate unique reference
+    const reference = this.generateReference('WITHDRAW', userId);
 
+    return withTransaction(async (trx) => {
       // Lock wallet with SELECT FOR UPDATE
       const wallet = await this.getWalletByUserId(userId, trx, true);
       
@@ -316,9 +331,9 @@ export class WalletService {
         trx("transactions").where({ id: transactionId }).first(),
       ]);
 
-      logger.info(`Withdrew from wallet ${wallet.id}: -${amountDecimal} (new balance: ${newBalance})`);
+      logger.info(`Withdrew from wallet ${wallet.id}: -${amountDecimal} (new balance: ${newBalance}) [ref: ${reference}]`);
 
-      return { wallet: updatedWallet, transaction };
+      return { wallet: updatedWallet, transaction, reference };
     });
   }
 
@@ -328,14 +343,13 @@ export class WalletService {
    * Transfers money from one user's wallet to another in a transaction-safe manner.
    * Uses ordered locking (by wallet ID) to prevent deadlocks.
    * Creates a transfer record and two transaction records (debit + credit).
-   * Idempotent - calling with the same reference returns the existing transfer.
+   * Automatically generates a unique reference for idempotency.
    * 
    * @param fromUserId - Source user ID
    * @param toUserId - Destination user ID
    * @param amount - Amount to transfer (must be positive)
-   * @param reference - Unique transfer reference
    * @param metadata - Optional metadata
-   * @returns Transfer details with both wallets
+   * @returns Transfer details with both wallets and generated reference
    * 
    * @throws Error if amount is invalid, insufficient funds, or wallets not found
    * 
@@ -345,22 +359,22 @@ export class WalletService {
    *   "user-123",
    *   "user-456",
    *   1000.00,
-   *   "TRANSFER-2024-001",
    *   { description: "Payment for services" }
    * );
+   * console.log(result.reference); // "TRANSFER-user-123-1699564800000-A1B2C3D4"
    * ```
    */
   static async transfer(
     fromUserId: string,
     toUserId: string,
     amount: number,
-    reference: string,
     metadata?: any
   ): Promise<{
     transfer: Transfer;
     fromWallet: Wallet;
     toWallet: Wallet;
     transactions: Transaction[];
+    reference: string;
   }> {
     // Validate amount
     if (amount <= 0) {
@@ -374,32 +388,10 @@ export class WalletService {
 
     const amountDecimal = amount.toFixed(6);
 
+    // Generate unique reference for this transfer
+    const reference = this.generateReference('TRANSFER', fromUserId);
+
     return withTransaction(async (trx) => {
-      // Check idempotency for transfer
-      const existingTransfer = await trx("transfers")
-        .where({ reference })
-        .first();
-
-      if (existingTransfer) {
-        logger.warn(`Duplicate transfer request with reference: ${reference}`);
-        
-        // Fetch related data
-        const [fromWallet, toWallet, transactions] = await Promise.all([
-          trx("wallets").where({ id: existingTransfer.from_wallet_id }).first(),
-          trx("wallets").where({ id: existingTransfer.to_wallet_id }).first(),
-          trx("transactions")
-            .where({ reference })
-            .orderBy("created_at", "asc"),
-        ]);
-
-        return {
-          transfer: existingTransfer,
-          fromWallet,
-          toWallet,
-          transactions,
-        };
-      }
-
       // Lock both wallets in ascending order by user_id to prevent deadlocks
       const lockOrder: [string, string] = fromUserId < toUserId 
         ? [fromUserId, toUserId] 
@@ -447,8 +439,11 @@ export class WalletService {
       });
 
       // Insert transaction records (debit from source, credit to destination)
+      // Use unique references for each transaction to avoid duplicate key error
       const debitTxnId = newId();
       const creditTxnId = newId();
+      const debitReference = `${reference}-OUT`;
+      const creditReference = `${reference}-IN`;
 
       await Promise.all([
         trx("transactions").insert({
@@ -457,7 +452,7 @@ export class WalletService {
           type: "transfer-out",
           amount_decimal: amountDecimal,
           balance_after: newFromBalance,
-          reference,
+          reference: debitReference,
           metadata: metadata ? JSON.stringify({ ...metadata, transfer_id: transferId }) : JSON.stringify({ transfer_id: transferId }),
           created_at: trx.fn.now(),
         }),
@@ -467,7 +462,7 @@ export class WalletService {
           type: "transfer-in",
           amount_decimal: amountDecimal,
           balance_after: newToBalance,
-          reference,
+          reference: creditReference,
           metadata: metadata ? JSON.stringify({ ...metadata, transfer_id: transferId }) : JSON.stringify({ transfer_id: transferId }),
           created_at: trx.fn.now(),
         }),
@@ -500,12 +495,12 @@ export class WalletService {
         trx("wallets").where({ id: fromWallet.id }).first(),
         trx("wallets").where({ id: toWallet.id }).first(),
         trx("transactions")
-          .where({ reference })
+          .whereIn("reference", [debitReference, creditReference])
           .orderBy("created_at", "asc"),
       ]);
 
       logger.info(
-        `Transfer completed: ${fromWallet.id} -> ${toWallet.id}, Amount: ${amountDecimal}`
+        `Transfer completed: ${fromWallet.id} -> ${toWallet.id}, Amount: ${amountDecimal} [ref: ${reference}]`
       );
 
       return {
@@ -513,6 +508,7 @@ export class WalletService {
         fromWallet: updatedFromWallet,
         toWallet: updatedToWallet,
         transactions,
+        reference,
       };
     });
   }

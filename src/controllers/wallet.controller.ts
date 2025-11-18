@@ -20,7 +20,6 @@ export class WalletController {
    * 
    * Request body:
    * - amount: number
-   * - reference: string
    * - metadata?: object
    * 
    * @param req - Express request object
@@ -34,7 +33,7 @@ export class WalletController {
   ): Promise<void> {
     try {
       const { userId } = req.params;
-      const { amount, reference, metadata } = req.body;
+      const { amount, metadata } = req.body;
 
       if (!userId) {
         res.status(400).json({
@@ -45,14 +44,25 @@ export class WalletController {
         return;
       }
 
-      // Fund wallet
-      const result = await WalletService.fund(userId, amount, reference, metadata);
+      // SECURITY: Verify the authenticated user owns this wallet
+      if (req.user?.id !== userId) {
+        res.status(403).json({
+          success: false,
+          error: "Forbidden",
+          message: "You can only fund your own wallet",
+        });
+        return;
+      }
 
-      // Return success response
+      // Fund wallet (reference auto-generated)
+      const result = await WalletService.fund(userId, amount, metadata);
+
+      // Return success response with generated reference
       res.status(200).json({
         success: true,
         message: "Wallet funded successfully",
         data: {
+          reference: result.reference,
           balance: result.wallet.balance_decimal,
           currency: result.wallet.currency,
           transaction: {
@@ -60,7 +70,6 @@ export class WalletController {
             type: result.transaction.type,
             amount: result.transaction.amount_decimal,
             balance_after: result.transaction.balance_after,
-            reference: result.transaction.reference,
             created_at: result.transaction.created_at,
           },
         },
@@ -77,7 +86,6 @@ export class WalletController {
    * 
    * Request body:
    * - amount: number
-   * - reference: string
    * - metadata?: object
    * 
    * @param req - Express request object
@@ -91,7 +99,7 @@ export class WalletController {
   ): Promise<void> {
     try {
       const { userId } = req.params;
-      const { amount, reference, metadata } = req.body;
+      const { amount, metadata } = req.body;
 
       if (!userId) {
         res.status(400).json({
@@ -102,14 +110,25 @@ export class WalletController {
         return;
       }
 
-      // Withdraw from wallet
-      const result = await WalletService.withdraw(userId, amount, reference, metadata);
+      // SECURITY: Verify the authenticated user owns this wallet
+      if (req.user?.id !== userId) {
+        res.status(403).json({
+          success: false,
+          error: "Forbidden",
+          message: "You can only withdraw from your own wallet",
+        });
+        return;
+      }
 
-      // Return success response
+      // Withdraw from wallet (reference auto-generated)
+      const result = await WalletService.withdraw(userId, amount, metadata);
+
+      // Return success response with generated reference
       res.status(200).json({
         success: true,
         message: "Withdrawal successful",
         data: {
+          reference: result.reference,
           balance: result.wallet.balance_decimal,
           currency: result.wallet.currency,
           transaction: {
@@ -117,7 +136,6 @@ export class WalletController {
             type: result.transaction.type,
             amount: result.transaction.amount_decimal,
             balance_after: result.transaction.balance_after,
-            reference: result.transaction.reference,
             created_at: result.transaction.created_at,
           },
         },
@@ -136,7 +154,6 @@ export class WalletController {
    * - fromUserId: string
    * - toUserId: string
    * - amount: number
-   * - reference: string
    * - metadata?: object
    * 
    * @param req - Express request object
@@ -149,29 +166,38 @@ export class WalletController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { fromUserId, toUserId, amount, reference, metadata } = req.body;
+      const { fromUserId, toUserId, amount, metadata } = req.body;
 
-      // Execute transfer
+      // SECURITY: Verify the authenticated user is the sender
+      if (req.user?.id !== fromUserId) {
+        res.status(403).json({
+          success: false,
+          error: "Forbidden",
+          message: "You can only transfer from your own wallet",
+        });
+        return;
+      }
+
+      // Execute transfer (reference auto-generated)
       const result = await WalletService.transfer(
         fromUserId,
         toUserId,
         amount,
-        reference,
         metadata
       );
 
-      // Return success response
+      // Return success response with generated reference
       res.status(200).json({
         success: true,
         message: "Transfer completed successfully",
         data: {
+          reference: result.reference,
           transfer: {
             id: result.transfer.id,
             from_wallet_id: result.transfer.from_wallet_id,
             to_wallet_id: result.transfer.to_wallet_id,
             amount: result.transfer.amount_decimal,
             status: result.transfer.status,
-            reference: result.transfer.reference,
             created_at: result.transfer.created_at,
           },
           from_balance: result.fromWallet.balance_decimal,

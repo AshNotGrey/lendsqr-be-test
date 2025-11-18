@@ -94,6 +94,7 @@ export const getUserSchema = z.object({
 
 /**
  * Fund wallet schema
+ * Reference is auto-generated, so not required in request
  */
 export const fundWalletSchema = z.object({
   params: z.object({
@@ -101,13 +102,13 @@ export const fundWalletSchema = z.object({
   }),
   body: z.object({
     amount: amountSchema,
-    reference: referenceSchema,
     metadata: z.record(z.any()).optional(),
   }),
 });
 
 /**
  * Withdraw from wallet schema
+ * Reference is auto-generated, so not required in request
  */
 export const withdrawWalletSchema = z.object({
   params: z.object({
@@ -115,20 +116,19 @@ export const withdrawWalletSchema = z.object({
   }),
   body: z.object({
     amount: amountSchema,
-    reference: referenceSchema,
     metadata: z.record(z.any()).optional(),
   }),
 });
 
 /**
  * Transfer between wallets schema
+ * Reference is auto-generated, so not required in request
  */
 export const transferSchema = z.object({
   body: z.object({
     fromUserId: uuidSchema,
     toUserId: uuidSchema,
     amount: amountSchema,
-    reference: referenceSchema,
     metadata: z.record(z.any()).optional(),
   }).refine((data) => data.fromUserId !== data.toUserId, {
     message: "Cannot transfer to yourself",

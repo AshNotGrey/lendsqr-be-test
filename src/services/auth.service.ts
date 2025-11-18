@@ -12,6 +12,8 @@ import { UserService, User } from "./user.service";
 import { WalletService } from "./wallet.service";
 import { AdjutorService } from "./adjutor.service";
 import { logger } from "../utils/logger";
+import { AppError } from "../middlewares/error";
+import { config } from "../config/env";
 
 /**
  * User registration data
@@ -73,41 +75,54 @@ export class AuthService {
 
     // Check if email already exists
     if (await UserService.emailExists(email)) {
-      throw new Error("Email already registered");
+      throw new AppError(409, "Email already registered");
     }
 
     // Check if phone already exists
     if (await UserService.phoneExists(phone)) {
-      throw new Error("Phone number already registered");
+      throw new AppError(409, "Phone number already registered");
     }
 
-    // Check Adjutor Karma blacklist
-    logger.info(`Checking Adjutor blacklist for signup: ${email}`);
-    const karmaResult = await AdjutorService.checkKarma(bvn, "bvn");
+    // Check Adjutor Karma blacklist (unless bypassed for testing)
+    let karmaResult: Awaited<ReturnType<typeof AdjutorService.checkKarma>> | null = null;
+    
+    if (config.adjutor.skipCheck) {
+      logger.warn(`⚠️  SKIP_KARMA_CHECK is enabled - Skipping Adjutor blacklist check for: ${email}`);
+      logger.warn("   WARNING: This bypass should ONLY be used for testing!");
+    } else {
+      logger.info(`Checking Adjutor blacklist for signup: ${email}`);
+      karmaResult = await AdjutorService.checkKarma(bvn, "bvn");
 
-    if (karmaResult.isFlagged) {
-      logger.warn(`User blocked due to blacklist: ${email}`);
-      throw new Error(
-        "User is blacklisted and cannot be onboarded. " +
-        "Please contact support for assistance."
-      );
+      if (karmaResult.isFlagged) {
+        logger.warn(`User blocked due to blacklist: ${email}`);
+        throw new AppError(
+          403,
+          "User is blacklisted and cannot be onboarded. " +
+          "Please contact support for assistance."
+        );
+      }
     }
 
     // Create user and wallet in transaction
     const { user } = await withTransaction(async (trx) => {
       // Create user
       const userId = newId();
-      const [createdUser] = await trx("users")
-        .insert({
-          id: userId,
-          name,
-          email,
-          phone,
-          status: "active",
-          created_at: trx.fn.now(),
-          updated_at: trx.fn.now(),
-        })
-        .returning("*");
+      await trx("users").insert({
+        id: userId,
+        name,
+        email,
+        phone,
+        status: "active",
+        created_at: trx.fn.now(),
+        updated_at: trx.fn.now(),
+      });
+
+      // Fetch the created user (MySQL doesn't support .returning())
+      const createdUser = await trx("users").where({ id: userId }).first();
+
+      if (!createdUser) {
+        throw new Error("Failed to create user");
+      }
 
       // Create wallet for user
       await WalletService.createWallet(userId, trx);
@@ -119,17 +134,21 @@ export class AuthService {
       };
     });
 
-    // Log Adjutor check (outside main transaction)
-    try {
-      await AdjutorService.logCheck(
-        user.id,
-        "bvn",
-        karmaResult.rawResponse,
-        karmaResult.isFlagged
-      );
-    } catch (error) {
-      // Log error but don't fail signup
-      logger.error("Failed to log Adjutor check", error);
+    // Log Adjutor check (outside main transaction) - only if check was performed
+    if (karmaResult) {
+      try {
+        await AdjutorService.logCheck(
+          user.id,
+          "bvn",
+          karmaResult.rawResponse,
+          karmaResult.isFlagged
+        );
+      } catch (error) {
+        // Log error but don't fail signup
+        logger.error("Failed to log Adjutor check", error);
+      }
+    } else {
+      logger.warn(`⚠️  Adjutor check was skipped - no audit log created for user: ${user.id}`);
     }
 
     // Generate auth token
@@ -165,7 +184,7 @@ export class AuthService {
 
     // Must provide either email or phone
     if (!email && !phone) {
-      throw new Error("Email or phone number is required");
+      throw new AppError(400, "Email or phone number is required");
     }
 
     // Find user
@@ -178,16 +197,16 @@ export class AuthService {
     }
 
     if (!user) {
-      throw new Error("Invalid credentials");
+      throw new AppError(401, "Invalid credentials");
     }
 
     // Check user status
     if (user.status === "blocked") {
-      throw new Error("Account is blocked. Please contact support.");
+      throw new AppError(403, "Account is blocked. Please contact support.");
     }
 
     if (user.status === "blacklisted") {
-      throw new Error("Account is blacklisted and cannot access services.");
+      throw new AppError(403, "Account is blacklisted and cannot access services.");
     }
 
     // Generate auth token

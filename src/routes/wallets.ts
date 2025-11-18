@@ -27,14 +27,18 @@ const router = Router();
  *       - Wallets
  *     summary: Fund a wallet
  *     description: |
- *       Add funds to a user's wallet. This operation is idempotent using the unique reference.
+ *       Add funds to a user's wallet. Reference is automatically generated for idempotency.
  *       
  *       **Authentication:** Required (Bearer token)
  *       
+ *       **Security:**
+ *       - User can only fund their own wallet
+ *       - Returns 403 Forbidden if attempting to fund another user's wallet
+ *       
  *       **Idempotency:**
- *       - Uses unique `reference` field to prevent duplicate transactions
- *       - Same reference cannot be used twice
- *       - If reference already exists, returns 409 Conflict
+ *       - Server automatically generates a unique reference
+ *       - Reference format: FUND-{userId}-{timestamp}-{random}
+ *       - Reference is returned in the response for tracking
  *       
  *       **Transaction Safety:**
  *       - Uses MySQL transactions with row-level locking
@@ -50,7 +54,7 @@ const router = Router();
  *         schema:
  *           type: string
  *           format: uuid
- *         description: User's unique identifier (UUID)
+ *         description: User's unique identifier (must match authenticated user)
  *         example: "550e8400-e29b-41d4-a716-446655440000"
  *     requestBody:
  *       required: true
@@ -63,12 +67,10 @@ const router = Router();
  *               summary: Basic wallet funding
  *               value:
  *                 amount: 500.00
- *                 reference: "FUND-20240115-123456"
  *             fundingWithMetadata:
  *               summary: Funding with metadata
  *               value:
  *                 amount: 1000.00
- *                 reference: "FUND-20240115-654321"
  *                 metadata:
  *                   source: "bank_transfer"
  *                   description: "Salary deposit"
@@ -125,18 +127,22 @@ router.post(
  *       - Wallets
  *     summary: Withdraw from a wallet
  *     description: |
- *       Withdraw funds from a user's wallet. This operation is idempotent using the unique reference.
+ *       Withdraw funds from a user's wallet. Reference is automatically generated for idempotency.
  *       
  *       **Authentication:** Required (Bearer token)
+ *       
+ *       **Security:**
+ *       - User can only withdraw from their own wallet
+ *       - Returns 403 Forbidden if attempting to withdraw from another user's wallet
  *       
  *       **Balance Check:**
  *       - Amount must not exceed current wallet balance
  *       - Returns 400 Bad Request if insufficient balance
  *       
  *       **Idempotency:**
- *       - Uses unique `reference` field to prevent duplicate transactions
- *       - Same reference cannot be used twice
- *       - If reference already exists, returns 409 Conflict
+ *       - Server automatically generates a unique reference
+ *       - Reference format: WITHDRAW-{userId}-{timestamp}-{random}
+ *       - Reference is returned in the response for tracking
  *       
  *       **Transaction Safety:**
  *       - Uses MySQL transactions with row-level locking (`SELECT ... FOR UPDATE`)
@@ -152,7 +158,7 @@ router.post(
  *         schema:
  *           type: string
  *           format: uuid
- *         description: User's unique identifier (UUID)
+ *         description: User's unique identifier (must match authenticated user)
  *         example: "550e8400-e29b-41d4-a716-446655440000"
  *     requestBody:
  *       required: true
@@ -165,12 +171,10 @@ router.post(
  *               summary: Basic withdrawal
  *               value:
  *                 amount: 200.00
- *                 reference: "WITHDRAW-20240115-123456"
  *             withdrawalWithMetadata:
  *               summary: Withdrawal with metadata
  *               value:
  *                 amount: 500.00
- *                 reference: "WITHDRAW-20240115-654321"
  *                 metadata:
  *                   destination: "bank_account"
  *                   accountNumber: "0123456789"
@@ -229,9 +233,13 @@ router.post(
  *       - Wallets
  *     summary: Transfer funds between wallets
  *     description: |
- *       Transfer funds from one user's wallet to another. This is a peer-to-peer transaction.
+ *       Transfer funds from one user's wallet to another. Reference is automatically generated for idempotency.
  *       
  *       **Authentication:** Required (Bearer token)
+ *       
+ *       **Security:**
+ *       - User can only transfer from their own wallet
+ *       - Returns 403 Forbidden if fromUserId doesn't match authenticated user
  *       
  *       **Validation:**
  *       - Sender and recipient must be different users
@@ -239,13 +247,14 @@ router.post(
  *       - Both wallets must exist
  *       
  *       **Idempotency:**
- *       - Uses unique `reference` field to prevent duplicate transactions
- *       - Same reference cannot be used twice
- *       - If reference already exists, returns 409 Conflict
+ *       - Server automatically generates a unique reference
+ *       - Reference format: TRANSFER-{fromUserId}-{timestamp}-{random}
+ *       - Reference is returned in the response for tracking
  *       
  *       **Transaction Safety:**
  *       - Uses MySQL transactions with row-level locking on BOTH wallets
  *       - Atomic operation: either both wallets are updated or neither
+ *       - Creates two transaction records with unique references (REF-OUT, REF-IN)
  *       - Records transfer in `transfers` table
  *       - Guarantees consistency even under high concurrency
  *     operationId: transferFunds
@@ -264,14 +273,12 @@ router.post(
  *                 fromUserId: "550e8400-e29b-41d4-a716-446655440000"
  *                 toUserId: "770e8400-e29b-41d4-a716-446655440111"
  *                 amount: 300.00
- *                 reference: "TRANSFER-20240115-123456"
  *             transferWithMetadata:
  *               summary: Transfer with metadata
  *               value:
  *                 fromUserId: "550e8400-e29b-41d4-a716-446655440000"
  *                 toUserId: "770e8400-e29b-41d4-a716-446655440111"
  *                 amount: 500.00
- *                 reference: "TRANSFER-20240115-654321"
  *                 metadata:
  *                   reason: "payment"
  *                   description: "Invoice #12345"

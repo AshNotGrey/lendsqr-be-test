@@ -25,6 +25,7 @@ export type IdentityType = "bvn" | "email" | "phone";
 interface AdjutorKarmaResponse {
   status: string;
   message: string;
+  "mock-response"?: string; // Present when app is in test mode
   data?: {
     karma_identity: string;
     amount_in_contention: string;
@@ -187,6 +188,7 @@ export class AdjutorService {
 
       // Check if mock mode is enabled
       if (config.adjutor.mode === "mock") {
+        logger.warn("⚠️  ADJUTOR_MODE is set to 'mock' - NOT making real API calls!");
         logger.debug("Using mock Adjutor response");
         
         // Simulate blacklist for specific test values
@@ -201,17 +203,62 @@ export class AdjutorService {
         await new Promise(resolve => setTimeout(resolve, 100));
       } else {
         // Live mode - call Adjutor API
+        logger.info(`🌐 Making LIVE Adjutor API call for ${identityType}: ${identity.substring(0, 4)}***`);
         const axiosInstance = this.getAxiosInstance();
-        const apiResponse = await axiosInstance.get<AdjutorKarmaResponse>(
-          `/v2/verification/karma/${encodeURIComponent(identity)}`
-        );
+        
+        // Adjutor API endpoint format: /v2/verification/karma/{identity}
+        // The API auto-detects identity type from the format (BVN, email, phone, domain, etc.)
+        // Reference: https://docs.adjutor.io/adjutor-api-endpoints/validation/karma-lookup
+        const endpoint = `/v2/verification/karma/${encodeURIComponent(identity)}`;
+        
+        logger.debug(`Calling Adjutor API: ${config.adjutor.baseUrl}${endpoint}`);
+        logger.debug(`Expected identity type: ${identityType}, API will auto-detect from format`);
+        
+        const apiResponse = await axiosInstance.get<AdjutorKarmaResponse>(endpoint);
         
         response = apiResponse.data;
-        logger.debug("Received Adjutor API response", { status: response.status });
+        
+        // Check if this is a test mode response
+        if (response["mock-response"]) {
+          logger.warn("⚠️  ADJUTOR APP IS IN TEST MODE - Returning mock/test data!");
+          logger.warn(`   ${response["mock-response"]}`);
+          logger.warn("   To get real blacklist data:");
+          logger.warn("   1. Complete KYC: https://lsq.li/adjutor-kyc");
+          logger.warn("   2. Toggle your app to 'Live Mode' in Adjutor dashboard");
+        }
+        
+        // Log full response details for debugging
+        const detectedType = response.data?.karma_identity_type?.identity_type || 'unknown';
+        const isFlagged = !!(response.data && response.data.karma_identity);
+        
+        logger.info("✅ Received Adjutor API response", { 
+          status: response.status,
+          message: response.message,
+          isTestMode: !!response["mock-response"],
+          detectedIdentityType: detectedType,
+          isFlagged: isFlagged,
+          karmaIdentity: response.data?.karma_identity || null,
+          cost: response.meta?.cost,
+          balance: response.meta?.balance,
+          fullResponse: config.nodeEnv === "development" ? response : undefined
+        });
+        
+        // Warn if detected type doesn't match expected type
+        if (response.data && detectedType.toLowerCase() !== identityType.toLowerCase()) {
+          logger.warn(`⚠️  Identity type mismatch: Expected ${identityType}, but API detected ${detectedType}`);
+          if (response["mock-response"]) {
+            logger.warn("   This is likely due to test mode returning mock data");
+          }
+        }
       }
 
       // Determine if identity is flagged
-      // User is blacklisted if response.data exists with karma_identity
+      // According to Adjutor docs:
+      // - If response.data exists with karma_identity, the identity is blacklisted
+      // - If 404 is returned, no record exists (identity is clean)
+      // Note: If your Adjutor app is in "test mode" on the platform, it may return
+      // test data that flags all identities. Switch to "live/production" mode in
+      // your Adjutor dashboard to get real blacklist data.
       const isFlagged = !!(response.data && response.data.karma_identity);
 
       const result: KarmaCheckResult = {

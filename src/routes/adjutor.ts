@@ -26,6 +26,11 @@ const router = Router();
  *       
  *       **Authentication:** Required (Bearer token)
  *       
+ *       **How It Works:**
+ *       - Our API accepts `identityType` for validation and logging purposes
+ *       - Internally calls Adjutor's API: `POST /v2/verification/karma/{identity}`
+ *       - Adjutor auto-detects identity type from the format (BVN, email, phone, etc.)
+ *       
  *       **Purpose:**
  *       - Used internally during user signup to prevent blacklisted users from onboarding
  *       - Can be used for testing/debugging blacklist checks
@@ -36,7 +41,11 @@ const router = Router();
  *       - `email`: Email address
  *       - `phone`: Phone number in international format
  *       
- *       **Note:** BVN is used for verification but NOT stored in the database.
+ *       **Important Notes:**
+ *       - BVN is used for verification but NOT stored in the database
+ *       - Requires Adjutor API key (configured via environment variables)
+ *       - If your Adjutor app is in "Test Mode", all checks return mock data
+ *       - Switch to "Live Mode" in Adjutor dashboard for real blacklist checks
  *     operationId: checkKarmaBlacklist
  *     security:
  *       - BearerAuth: []

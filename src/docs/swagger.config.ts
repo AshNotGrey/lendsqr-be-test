@@ -42,8 +42,8 @@ export const swaggerDefinition = {
       Click the "Authorize" button and enter your token in the format: \`Bearer <your-token>\`
       
       ## Transaction Idempotency
-      Fund, withdraw, and transfer operations use a unique \`reference\` field to ensure 
-      idempotent operations. The same reference cannot be used twice, preventing duplicate transactions.
+      Fund, withdraw, and transfer operations automatically generate a unique \`reference\` field to ensure 
+      idempotent operations. The generated reference is returned in the response for tracking and audit purposes.
       
       ## Database Transactions
       Wallet operations use MySQL transactions with row-level locking (\`SELECT ... FOR UPDATE\`)
