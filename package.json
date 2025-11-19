@@ -13,6 +13,7 @@
     "migrate": "node scripts/run-knex.js migrate:latest",
     "migrate:make": "knex migrate:make --knexfile knexfile.ts -x ts",
     "migrate:rollback": "node scripts/run-knex.js migrate:rollback",
+    "migrate:reset": "node scripts/reset-migrations.js",
     "seed": "node scripts/run-knex.js seed:run",
     "seed:make": "knex seed:make --knexfile knexfile.ts -x ts",
     "test": "vitest run",
