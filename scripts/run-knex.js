@@ -11,18 +11,19 @@ const tsKnexfile = path.join(projectRoot, 'knexfile.ts');
 const distKnexfile = path.join(projectRoot, 'dist', 'knexfile.js');
 const hasTsNode = fs.existsSync(path.join(projectRoot, 'node_modules', 'ts-node'));
 
-const shouldUseDist =
-  process.env.NODE_ENV === 'production' ||
-  process.env.FORCE_JS_MIGRATIONS === 'true' ||
-  !hasTsNode;
+const preferJs = process.env.FORCE_JS_MIGRATIONS === 'true';
+const canUseTs = hasTsNode && fs.existsSync(tsKnexfile) && !preferJs;
+const hasDist = fs.existsSync(distKnexfile);
 
-const knexfileToUse =
-  shouldUseDist && fs.existsSync(distKnexfile) ? distKnexfile : tsKnexfile;
+if (!canUseTs && !hasDist) {
+  console.error('❌ No usable knexfile found. Build the project or install ts-node.');
+  process.exit(1);
+}
 
-if (knexfileToUse === tsKnexfile && !hasTsNode) {
-  console.warn(
-    '⚠️  ts-node not found; falling back to TypeScript knexfile because no compiled file exists.'
-  );
+const knexfileToUse = canUseTs ? tsKnexfile : distKnexfile;
+
+if (!canUseTs) {
+  console.warn('⚠️  Using compiled knexfile (ts-node unavailable or FORCE_JS_MIGRATIONS=true).');
 }
 
 const [, , ...cliArgs] = process.argv;
