@@ -58,8 +58,17 @@ async function resetMigrations() {
         console.log('⚠️  This will DROP ALL TABLES and clear migration history\n');
 
         // Drop all tables in reverse order (respecting foreign keys)
-        const tablesToDrop = ['transactions', 'wallets', 'users', 'knex_migrations', 'knex_migrations_lock'];
-
+        // Order matters: child tables (with FKs) must be dropped before parent tables
+        const tablesToDrop = [
+            'transfers',        // Has FK to wallets
+            'transactions',     // Has FK to wallets
+            'adjutor_checks',   // Has FK to users
+            'wallets',          // Has FK to users
+            'users',            // Base table
+            'knex_migrations',
+            'knex_migrations_lock'
+        ];
+        
         for (const table of tablesToDrop) {
             const exists = await db.schema.hasTable(table);
             if (exists) {
