@@ -30,9 +30,9 @@ async function startServer(): Promise<void> {
       console.log("\n🚀 Lendsqr Wallet Backend Server Started");
       console.log(`   Environment: ${config.nodeEnv}`);
       console.log(`   Port: ${config.port}`);
-      console.log(`   URL: http://localhost:${config.port}`);
-      console.log(`   API: http://localhost:${config.port}/api/v1`);
-      console.log(`   📚 Swagger UI: http://localhost:${config.port}/api-docs`);
+      console.log(`   URL: ${config.publicUrl}`);
+      console.log(`   API: ${config.publicUrl}/api/v1`);
+      console.log(`   📚 Swagger UI: ${config.publicUrl}/api-docs`);
       console.log("\n✅ Server is ready to accept connections\n");
     });
 

@@ -60,6 +60,9 @@ interface Config {
   
   /** Logging configuration */
   logLevel: string;
+
+  /** Public base URL used in logs and documentation */
+  publicUrl: string;
 }
 
 /**
@@ -185,6 +188,15 @@ function validateDatabaseUrl(url: string): string {
  * @returns Complete validated configuration object
  * @throws Error if any required configuration is missing or invalid
  */
+function resolvePublicUrl(port: number): string {
+  const override = process.env["APP_BASE_URL"]?.trim();
+  const platformUrl = process.env["RENDER_EXTERNAL_URL"]?.trim();
+  const fallback = `http://localhost:${port}`;
+
+  const selected = override || platformUrl || fallback;
+  return selected.replace(/\/$/, "");
+}
+
 function loadConfig(): Config {
   try {
     // Load and validate all environment variables
@@ -240,6 +252,7 @@ function loadConfig(): Config {
     }
     
     const logLevel = getEnvVar("LOG_LEVEL", "info");
+    const publicUrl = resolvePublicUrl(port);
     
     return {
       nodeEnv,
@@ -254,6 +267,7 @@ function loadConfig(): Config {
         skipCheck: skipKarmaCheck,
       },
       logLevel,
+      publicUrl,
     };
   } catch (error) {
     // Enhance error message with helpful context
@@ -310,6 +324,7 @@ if (isDevelopment()) {
   console.log("✅ Configuration loaded successfully");
   console.log(`   Environment: ${config.nodeEnv}`);
   console.log(`   Port: ${config.port}`);
+  console.log(`   Public URL: ${config.publicUrl}`);
   console.log(`   Adjutor Mode: ${config.adjutor.mode}`);
 }
 
