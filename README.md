@@ -185,6 +185,27 @@ Demo Credit is a mobile lending app that requires wallet functionality. This bac
 └─────────────────┘
 ```
 
+**Interactive diagram resources**
+
+- [Open the interactive ER diagram](https://dbdesigner.page.link/o5eQaqyzZq2vM4Ec7) (DBDesigner public share)
+
+```html
+<iframe
+  width="100%"
+  height="500px"
+  allowtransparency="true"
+  allowfullscreen="true"
+  scrolling="no"
+  title="{{ $t('sharable_link.embedded_db_designer_iframe') }}"
+  frameborder="0"
+  src="https://erd.dbdesigner.net/designer/schema/1763542641-lendsqr-be-test?embed=true">
+</iframe>
+```
+
+- Static snapshot for offline contexts (preview below and file at `src/docs/schemas/lendsqr-be-test.png`):
+
+![Lendsqr wallet ER diagram](src/docs/schemas/lendsqr-be-test.png)
+
 ## Getting Started
 
 ### Prerequisites
@@ -255,7 +276,7 @@ ADJUTOR_BASE_URL=https://adjutor.lendsqr.com
 ADJUTOR_API_KEY=your-adjutor-api-key
 ADJUTOR_MODE=mock  # Use 'live' for production
 ADJUTOR_TIMEOUT=5000
-
+SKIP_KARMA_CHECK=false #Toggle depending on if Adjutor API is in Test mode or Live mode
 # Logging
 LOG_LEVEL=debug
 ```
