@@ -1,11 +1,20 @@
 #!/usr/bin/env node
 /**
- * One-time script to reset the knex_migrations table.
- * Use this if the migration directory is corrupt due to environment mismatches.
+ * Migration Reset Script
  * 
- * WARNING: This will drop and recreate all tables. Only use in development/staging.
+ * Drops ALL database tables (users, wallets, transactions, knex_migrations)
+ * and clears migration history for a complete fresh start.
  * 
- * Usage: node scripts/reset-migrations.js
+ * ⚠️ WARNING: This is DESTRUCTIVE and will DELETE ALL DATA!
+ * 
+ * Use Cases:
+ * - First-time deployment to fresh database
+ * - When you need to completely reset the database schema
+ * - Resolving migration conflicts in development
+ * 
+ * Usage: npm run migrate:reset
+ * 
+ * For normal deployments, use: npm run migrate (incremental)
  */
 
 const knex = require('knex');
@@ -46,20 +55,21 @@ async function resetMigrations() {
 
     try {
         console.log(`\n🔄 Resetting migrations for environment: ${env}`);
-        console.log('⚠️  This will truncate the knex_migrations table\n');
+        console.log('⚠️  This will DROP ALL TABLES and clear migration history\n');
 
-        // Check if migrations table exists
-        const hasTable = await db.schema.hasTable('knex_migrations');
+        // Drop all tables in reverse order (respecting foreign keys)
+        const tablesToDrop = ['transactions', 'wallets', 'users', 'knex_migrations', 'knex_migrations_lock'];
 
-        if (hasTable) {
-            console.log('Truncating knex_migrations table...');
-            await db('knex_migrations').truncate();
-            console.log('✅ Migration history cleared');
-        } else {
-            console.log('ℹ️  knex_migrations table does not exist yet');
+        for (const table of tablesToDrop) {
+            const exists = await db.schema.hasTable(table);
+            if (exists) {
+                console.log(`Dropping table: ${table}...`);
+                await db.schema.dropTable(table);
+                console.log(`✅ Dropped ${table}`);
+            }
         }
 
-        console.log('\n✅ Reset complete. You can now run migrations fresh.');
+        console.log('\n✅ Reset complete. All tables dropped.');
         console.log('   Run: npm run migrate\n');
     } catch (error) {
         console.error('❌ Failed to reset migrations:', error.message);
