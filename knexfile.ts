@@ -89,10 +89,12 @@ const knexConfig: { [key: string]: Knex.Config } = {
       tableName: "knex_migrations",
       directory: getMigrationDir(true),
       extension: "js",
+      loadExtensions: [".js"], // Explicitly only load .js files, not .d.ts
     },
     seeds: {
       directory: getSeedDir(true),
       extension: "js",
+      loadExtensions: [".js"], // Explicitly only load .js files, not .d.ts
     },
     // Disable debug logging in production
     debug: false,
