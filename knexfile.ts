@@ -9,7 +9,13 @@
  */
 
 import type { Knex } from "knex";
+import path from "path";
 import { config } from "./src/config/env";
+
+const isCompiled = /(?:^|[\\/])dist$/.test(__dirname);
+const ROOT_DIR = isCompiled ? path.resolve(__dirname, "..") : __dirname;
+const SRC_DIR = path.join(ROOT_DIR, "src");
+const DIST_DIR = path.join(ROOT_DIR, "dist");
 
 /**
  * Knex configuration for different environments
@@ -40,12 +46,12 @@ const knexConfig: { [key: string]: Knex.Config } = {
     },
     migrations: {
       tableName: "knex_migrations",
-      directory: "./src/db/migrations",
+      directory: path.join(SRC_DIR, "db/migrations"),
       extension: "ts",
       loadExtensions: [".ts"],
     },
     seeds: {
-      directory: "./src/db/seeds",
+      directory: path.join(SRC_DIR, "db/seeds"),
       extension: "ts",
       loadExtensions: [".ts"],
     },
@@ -74,11 +80,11 @@ const knexConfig: { [key: string]: Knex.Config } = {
     },
     migrations: {
       tableName: "knex_migrations",
-      directory: "./dist/db/migrations",
+      directory: path.join(DIST_DIR, "db/migrations"),
       extension: "js",
     },
     seeds: {
-      directory: "./dist/db/seeds",
+      directory: path.join(DIST_DIR, "db/seeds"),
       extension: "js",
     },
     // Disable debug logging in production
@@ -98,12 +104,12 @@ const knexConfig: { [key: string]: Knex.Config } = {
     },
     migrations: {
       tableName: "knex_migrations",
-      directory: "./src/db/migrations",
+      directory: path.join(SRC_DIR, "db/migrations"),
       extension: "ts",
       loadExtensions: [".ts"],
     },
     seeds: {
-      directory: "./src/db/seeds",
+      directory: path.join(SRC_DIR, "db/seeds"),
       extension: "ts",
       loadExtensions: [".ts"],
     },
