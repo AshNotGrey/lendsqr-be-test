@@ -2,14 +2,14 @@
   "name": "lendsqr-wallet-backend",
   "version": "1.0.0",
   "description": "Lendsqr Demo Credit Wallet Service - Backend Assessment",
-  "main": "dist/server.js",
+  "main": "dist/src/server.js",
   "engines": {
     "node": "20.x"
   },
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "node dist/src/server.js",
     "migrate": "node scripts/run-knex.js migrate:latest",
     "migrate:make": "knex migrate:make --knexfile knexfile.ts -x ts",
     "migrate:rollback": "node scripts/run-knex.js migrate:rollback",
