@@ -254,7 +254,7 @@ npm run migrate
 npm run dev
 ```
 
-The API will be available at `http://localhost:3000`
+The API will be available at `http://<your-domain>/api/v1`
 
 ## Environment Variables
 
@@ -266,7 +266,7 @@ NODE_ENV=development
 PORT=3000
 
 # Database (MySQL)
-DATABASE_URL=mysql://username:password@localhost:3306/lendsqr_wallet
+DATABASE_URL=mysql://username:password@localhost:3306/database_name
 
 # Authentication
 HMAC_SECRET=your-secret-key-minimum-32-characters
@@ -608,6 +608,9 @@ See `tests/README.md` for detailed testing documentation.
 
 ## Deployment
 
+- **Live Render URL:** https://obiajulu-okorie-lendsqr-be-test.onrender.com
+- **Database:** Railway MySQL (managed)
+
 ### Production Checklist
 
 - [ ] Set `NODE_ENV=production`
@@ -629,16 +632,12 @@ See `tests/README.md` for detailed testing documentation.
 
 4. **Add environment variables** (see Environment Variables section)
 
-5. **Add MySQL database:**
-   - Use Render's managed MySQL or external provider
-   - Set `DATABASE_URL` in environment variables
+5. **Provision MySQL on Railway:**
+   - Create (or reuse) a Railway project and add the **MySQL** plugin
+   - Copy the generated `DATABASE_URL`
+   - Paste it into the Render environment settings
 
-6. **Deploy!**
-
-The service will be available at:
-```
-https://<your-name>-lendsqr-be-test.onrender.com
-```
+6. **Deploy!** Render will host the API while Railway serves the database. See `DEPLOYMENT.md` for the detailed workflow.
 
 ## Design Decisions
 
@@ -785,7 +784,7 @@ Built for Lendsqr Backend Engineering Assessment
 
 ## Contact & Support
 
-For questions or support, contact [careers@lendsqr.com](mailto:careers@lendsqr.com)
+For questions or support, contact [official.de.ash@gmail.com](mailto:official.de.ash@gmail.com)
 
 ---
 
@@ -806,7 +805,7 @@ For questions or support, contact [careers@lendsqr.com](mailto:careers@lendsqr.c
 ✅ Interactive Swagger/OpenAPI 3.0 documentation  
 ✅ Deployment-ready structure  
 
-**Live Demo:** [Deployment URL will be added after deployment]
+**Live Demo:** https://obiajulu-okorie-lendsqr-be-test.onrender.com
 
-**GitHub Repository:** [Repository URL]
+**GitHub Repository:** [https://github.com/Obiajulu-Okorie/lendsqr-be-test](https://github.com/Obiajulu-Okorie/lendsqr-be-test)
 
