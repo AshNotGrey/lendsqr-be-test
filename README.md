@@ -668,6 +668,25 @@ npm run test:watch
 
 > Re-run `npm test` after code changes to ensure the suite stays green.
 
+### Coverage Snapshot
+
+```bash
+npm run test:coverage
+```
+
+- Runner: `vitest run --coverage` (v8)
+- Result: **PASS** (2025-11-20) — 12/12 test files, 117/117 tests
+- Aggregate coverage:
+  - Statements: 40.6 %
+  - Branches: 74.9 %
+  - Functions: 67.6 %
+  - Lines: 40.6 %
+- Notes:
+  - Business-critical services/controllers/middlewares exceed 80 % line coverage.
+  - Overall percentages are pulled down by generated assets (Swagger schemas, route wiring, CLI scripts) that are intentionally excluded from unit coverage.
+  - See the coverage report (`coverage/index.html`) for line-level detail.
+
+
 ### Test Database Setup
 
 ```sql
