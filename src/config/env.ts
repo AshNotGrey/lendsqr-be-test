@@ -186,11 +186,11 @@ function validateDatabaseUrl(url: string): string {
  * @throws Error if any required configuration is missing or invalid
  */
 function resolvePublicUrl(port: number): string {
-  const override = process.env["APP_BASE_URL"]?.trim();
+  const apiBaseUrl = process.env["API_BASE_URL"]?.trim();
   const platformUrl = process.env["RENDER_EXTERNAL_URL"]?.trim();
   const fallback = `http://localhost:${port}`;
 
-  const selected = override || platformUrl || fallback;
+  const selected = apiBaseUrl || platformUrl || fallback;
   return selected.replace(/\/$/, "");
 }
 

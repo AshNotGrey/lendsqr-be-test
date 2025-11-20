@@ -61,9 +61,7 @@ export const swaggerDefinition = {
   },
   servers: [
     {
-      url: config.nodeEnv === "production" 
-        ? "https://your-production-domain.com" 
-        : `http://localhost:${config.port}`,
+      url: config.publicUrl,
       description: config.nodeEnv === "production" ? "Production Server" : "Development Server",
     },
     {
