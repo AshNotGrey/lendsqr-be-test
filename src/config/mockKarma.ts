@@ -17,20 +17,20 @@ export const mockKarma = {
 		"11122233344",
 		"22233344455",
 		"33344455566",
-	],
+	] as string[],
 	// Email sentinels (case-insensitive match)
 	emails: [
 		"blacklisted@adjutor.test",
 		"fraudster@adjutor.test",
 		"defaulted@adjutor.test",
-	],
+	] as string[],
 	// Phone sentinels (normalize by removing spaces/dashes)
 	phones: [
 		"+2341234567890",
 		"+2348000000001",
 		"+2348000000002",
-	],
-} as const;
+	] as string[],
+};
 
 /**
  * Utility: normalize email for comparison
