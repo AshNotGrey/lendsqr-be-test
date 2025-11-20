@@ -13,6 +13,7 @@ import axiosRetry from "axios-retry";
 import { config } from "../config/env";
 import { knex, newId } from "../db";
 import { logger } from "../utils/logger";
+import { isInMockKarma } from "../config/mockKarma";
 
 /**
  * Identity types supported by Adjutor
@@ -191,13 +192,10 @@ export class AdjutorService {
         logger.warn("⚠️  ADJUTOR_MODE is set to 'mock' - NOT making real API calls!");
         logger.debug("Using mock Adjutor response");
         
-        // Simulate blacklist for specific test values
-        const isTestBlacklisted = 
-          identity === "12345678901" || // Test BVN
-          identity === "[email protected]" || // Test email
-          identity === "+2341234567890"; // Test phone
-        
-        response = this.generateMockResponse(identity, identityType, isTestBlacklisted);
+        // Simulate blacklist using deterministic mock list
+        const isBlacklisted = isInMockKarma(identity, identityType);
+
+        response = this.generateMockResponse(identity, identityType, isBlacklisted);
         
         // Simulate network delay
         await new Promise(resolve => setTimeout(resolve, 100));

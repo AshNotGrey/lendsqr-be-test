@@ -97,6 +97,15 @@ const router = Router();
  *                     karma:
  *                       status: "clear"
  *                       message: "No negative records found"
+ *               exampleCleanBvn:
+ *                 summary: Example (clean BVN in mock mode)
+ *                 value:
+ *                   success: true
+ *                   message: "Karma check completed"
+ *                   data:
+ *                     identityType: "bvn"
+ *                     identity: "22212345679"
+ *                     isBlacklisted: false
  *               blacklisted:
  *                 summary: User is blacklisted
  *                 value:
@@ -110,6 +119,24 @@ const router = Router();
  *                     karma:
  *                       status: "blacklisted"
  *                       message: "User has negative credit history"
+ *               exampleBlacklistedEmail:
+ *                 summary: Example (blacklisted email in mock mode)
+ *                 value:
+ *                   success: true
+ *                   message: "Karma check completed"
+ *                   data:
+ *                     identityType: "email"
+ *                     identity: "blacklisted@adjutor.test"
+ *                     isBlacklisted: true
+ *               exampleBlacklistedPhone:
+ *                 summary: Example (blacklisted phone in mock mode)
+ *                 value:
+ *                   success: true
+ *                   message: "Karma check completed"
+ *                   data:
+ *                     identityType: "phone"
+ *                     identity: "+2341234567890"
+ *                     isBlacklisted: true
  *       400:
  *         description: Validation error (invalid identity type or format)
  *         content:

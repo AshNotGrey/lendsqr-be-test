@@ -83,23 +83,40 @@ export class AuthService {
       throw new AppError(409, "Phone number already registered");
     }
 
-    // Check Adjutor Karma blacklist (unless bypassed for testing)
-    let karmaResult: Awaited<ReturnType<typeof AdjutorService.checkKarma>> | null = null;
-    
-    if (config.adjutor.skipCheck) {
-      logger.warn(`⚠️  SKIP_KARMA_CHECK is enabled - Skipping Adjutor blacklist check for: ${email}`);
-      logger.warn("   WARNING: This bypass should ONLY be used for testing!");
-    } else {
-      logger.info(`Checking Adjutor blacklist for signup: ${email}`);
-      karmaResult = await AdjutorService.checkKarma(bvn, "bvn");
+    // Adjutor Karma blacklist checks
+    // Live mode: check BVN only (strongest identifier, minimizes cost/latency)
+    // Mock mode: demonstrate deterministic outcomes by checking BVN → Email → Phone (short-circuit on first hit)
+    let lastKarmaResult: Awaited<ReturnType<typeof AdjutorService.checkKarma>> | null = null;
 
-      if (karmaResult.isFlagged) {
-        logger.warn(`User blocked due to blacklist: ${email}`);
+    logger.info(`Checking Adjutor blacklist for signup: ${email}`);
+
+    if (config.adjutor.mode === "live") {
+      const bvnCheck = await AdjutorService.checkKarma(bvn, "bvn");
+      lastKarmaResult = bvnCheck;
+      if (bvnCheck.isFlagged) {
+        logger.warn(`User blocked due to blacklist (BVN): ${email}`);
         throw new AppError(
           403,
-          "User is blacklisted and cannot be onboarded. " +
-          "Please contact support for assistance."
+          "User is blacklisted and cannot be onboarded. Please contact support for assistance."
         );
+      }
+    } else {
+      // mock mode: ordered checks with short-circuit
+      const ordered: Array<[string, "bvn" | "email" | "phone"]> = [
+        [bvn, "bvn"],
+        [email, "email"],
+        [phone, "phone"],
+      ];
+      for (const [value, type] of ordered) {
+        const result = await AdjutorService.checkKarma(value, type);
+        lastKarmaResult = result;
+        if (result.isFlagged) {
+          logger.warn(`User blocked due to blacklist (${type}): ${email}`);
+          throw new AppError(
+            403,
+            "User is blacklisted and cannot be onboarded. Please contact support for assistance."
+          );
+        }
       }
     }
 
@@ -135,20 +152,18 @@ export class AuthService {
     });
 
     // Log Adjutor check (outside main transaction) - only if check was performed
-    if (karmaResult) {
+    if (lastKarmaResult) {
       try {
         await AdjutorService.logCheck(
           user.id,
-          "bvn",
-          karmaResult.rawResponse,
-          karmaResult.isFlagged
+          lastKarmaResult.identityType,
+          lastKarmaResult.rawResponse,
+          lastKarmaResult.isFlagged
         );
       } catch (error) {
         // Log error but don't fail signup
         logger.error("Failed to log Adjutor check", error);
       }
-    } else {
-      logger.warn(`⚠️  Adjutor check was skipped - no audit log created for user: ${user.id}`);
     }
 
     // Generate auth token

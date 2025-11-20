@@ -68,7 +68,7 @@ async function resetMigrations() {
             'knex_migrations',
             'knex_migrations_lock'
         ];
-        
+
         for (const table of tablesToDrop) {
             const exists = await db.schema.hasTable(table);
             if (exists) {
