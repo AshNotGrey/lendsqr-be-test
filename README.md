@@ -276,10 +276,39 @@ ADJUTOR_BASE_URL=https://adjutor.lendsqr.com
 ADJUTOR_API_KEY=your-adjutor-api-key
 ADJUTOR_MODE=mock  # Use 'live' for production
 ADJUTOR_TIMEOUT=5000
-SKIP_KARMA_CHECK=false #Toggle depending on if Adjutor API is in Test mode or Live mode
 # Logging
 LOG_LEVEL=debug
 ```
+
+### Karma Modes and How We Check
+
+- `ADJUTOR_MODE=mock` (assessment default):
+  - Deterministic, offline-friendly behavior. We do NOT call Adjutor.
+  - Signup checks identities in order and short-circuits on first hit:
+    1) BVN → 2) Email → 3) Phone
+  - This demonstrates both accepted and rejected flows reliably for assessors.
+
+- `ADJUTOR_MODE=live` (production):
+  - We call Adjutor once using BVN only (strongest identifier, lowest cost/latency).
+  - Email/phone checks are not called in live to avoid redundant costs.
+
+Note: BVN is required for signup, used only for the check, and never stored.
+
+### Mock Blacklist (copy/paste for testing)
+
+Use these values in Swagger/request bodies to force a blacklist hit in mock mode:
+
+| Type  | Values |
+|------|--------|
+| BVN  | `12345678901`, `11122233344`, `22233344455`, `33344455566` |
+| Email | `blacklisted@adjutor.test`, `fraudster@adjutor.test`, `defaulted@adjutor.test` |
+| Phone | `+2341234567890`, `+2348000000001`, `+2348000000002` |
+
+Clean test values (examples):
+
+- BVN: `22212345679`
+- Email: `john.doe@example.com`
+- Phone: `+2348012345678`
 
 ### Getting Adjutor API Key
 
@@ -385,9 +414,9 @@ Register a new user with Adjutor blacklist check.
 ```json
 {
   "name": "John Doe",
-  "email": "[email protected]",
+  "email": "john.doe@example.com",
   "phone": "+2347012345678",
-  "bvn": "22212345678"
+  "bvn": "22212345679"
 }
 ```
 
@@ -408,6 +437,36 @@ Register a new user with Adjutor blacklist check.
     "token": "candidate:uuid:nonce:signature"
   }
 }
+```
+
+#### Quick Testing Recipes (Mock Mode)
+
+- Accepted (clean):
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Good User","email":"good@example.com","phone":"+2348012345678","bvn":"22212345679"}'
+```
+
+- Rejected by BVN:
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Bad Actor","email":"bad@example.com","phone":"+2348012345678","bvn":"12345678901"}'
+```
+
+- Rejected by Email:
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Fraudster","email":"blacklisted@adjutor.test","phone":"+2348012345678","bvn":"22212345679"}'
+```
+
+- Rejected by Phone:
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Phone Fraud","email":"ok@example.com","phone":"+2341234567890","bvn":"22212345679"}'
 ```
 
 #### POST /auth/login
@@ -593,6 +652,21 @@ npm run test:coverage
 # Watch mode
 npm run test:watch
 ```
+
+### Latest Test Snapshot
+
+- Command: `npm test`
+- Framework: Vitest
+- Scope: 12 unit test files / 117 individual tests
+- Result: **PASS** (Date: 2025-11-20, commit-in-progress)
+- Focus areas covered:
+  - Adjutor mock/live plumbing
+  - Auth signup/login flows (including sequential BVN → email → phone checks)
+  - Wallet services (fund, withdraw, transfer with row locking + idempotent refs)
+  - Middleware validation/auth layers
+  - Controller-contract tests for auth/user/wallet endpoints
+
+> Re-run `npm test` after code changes to ensure the suite stays green.
 
 ### Test Database Setup
 

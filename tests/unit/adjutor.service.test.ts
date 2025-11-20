@@ -43,11 +43,11 @@ describe("AdjutorService", () => {
     });
 
     it("should return flagged result for test blacklisted email", async () => {
-      const result = await AdjutorService.checkKarma("[email protected]", "email");
+      const result = await AdjutorService.checkKarma("blacklisted@adjutor.test", "email");
       
       expect(result.isFlagged).toBe(true);
       expect(result.identityType).toBe("email");
-      expect(result.rawResponse.data?.karma_identity).toBe("[email protected]");
+      expect(result.rawResponse.data?.karma_identity).toBe("blacklisted@adjutor.test");
     });
 
     it("should return flagged result for test blacklisted phone", async () => {
@@ -107,13 +107,15 @@ describe("AdjutorService", () => {
   describe("logCheck", () => {
     it("should log karma check to database", async () => {
       const mockInsert = vi.fn().mockResolvedValue([1]);
-      const mockFn = vi.fn(() => ({ now: () => new Date() }));
       const mockKnex = vi.fn(() => ({
         insert: mockInsert,
       })) as any;
-      mockKnex.fn = mockFn;
+      // Provide knex.fn.now() shape
+      mockKnex.fn = { now: () => new Date() } as any;
       
       vi.mocked(knex).mockImplementation(mockKnex);
+      // Also set knex.fn.now used in service
+      (knex as any).fn = { now: () => new Date() };
 
       const mockResponse = {
         status: "success",

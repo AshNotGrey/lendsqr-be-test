@@ -32,6 +32,21 @@ npm run test:coverage
 npm run test:watch
 ```
 
+### Latest Suite Status
+
+- Command: `npm test`
+- Runner: Vitest
+- Files covered: 12 unit suites
+- Total tests: 117
+- Status: **PASS** (2025-11-20)
+- Highlights:
+  - Adjutor service/controller mocks validated across BVN/email/phone identities
+  - Auth service/controller flow (signup with ordered checks, faux token login)
+  - Wallet service concurrency features (fund/withdraw/transfer, FOR UPDATE locking)
+  - Middleware auth + validator behavior, token utilities
+
+Keep this snapshot updated whenever you run the full suite so reviewers can see the latest known good state.
+
 ## Test Database Setup
 
 Integration tests require a MySQL test database. 

@@ -11,14 +11,18 @@ import { knex } from "../../src/db";
 import { AppError } from "../../src/middlewares/error";
 
 // Mock dependencies
-// Mock transaction first (before any mocks that use it)
-const mockTrx = {
-  insert: vi.fn().mockResolvedValue([1]),
-  where: vi.fn().mockReturnThis(),
-  first: vi.fn(),
-  commit: vi.fn(),
-  rollback: vi.fn(),
-} as any;
+// Hoisted callable transaction for withTransaction
+const { mockTrx } = vi.hoisted(() => {
+  const query = {
+    insert: vi.fn().mockResolvedValue([1]),
+    where: vi.fn().mockReturnThis(),
+    first: vi.fn(),
+  } as any;
+  const fn = vi.fn(() => new Date());
+  const trx = vi.fn(() => query) as any;
+  trx.fn = { now: () => new Date() };
+  return { mockTrx: trx };
+});
 
 vi.mock("../../src/db", () => ({
   knex: vi.fn(),
@@ -36,10 +40,9 @@ vi.mock("../../src/services/adjutor.service", () => ({
 describe("AuthService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.SKIP_KARMA_CHECK = "false";
   });
 
-  describe("signup", () => {
+  describe("createUser (signup)", () => {
     const validSignupData = {
       name: "John Doe",
       email: "[email protected]",
@@ -48,51 +51,72 @@ describe("AuthService", () => {
     };
 
     it("should create user with valid data", async () => {
-      // Mock Adjutor check (clean)
-      vi.mocked(AdjutorService.checkKarma).mockResolvedValue({
-        isFlagged: false,
-        identity: validSignupData.bvn,
-        identityType: "bvn",
-        rawResponse: { status: "success", message: "No record found" },
-        checkedAt: new Date(),
-      });
+      // Mock Adjutor checks (clean across BVN, Email, Phone in mock mode)
+      vi.mocked(AdjutorService.checkKarma)
+        .mockResolvedValueOnce({
+          isFlagged: false,
+          identity: validSignupData.bvn,
+          identityType: "bvn",
+          rawResponse: { status: "success", message: "No record found" },
+          checkedAt: new Date(),
+        })
+        .mockResolvedValueOnce({
+          isFlagged: false,
+          identity: validSignupData.email,
+          identityType: "email",
+          rawResponse: { status: "success", message: "No record found" },
+          checkedAt: new Date(),
+        })
+        .mockResolvedValueOnce({
+          isFlagged: false,
+          identity: validSignupData.phone,
+          identityType: "phone",
+          rawResponse: { status: "success", message: "No record found" },
+          checkedAt: new Date(),
+        });
 
-      // Mock database queries
+      // Mock database queries (non-transactional checks)
       const mockKnexFn = vi.fn(() => ({
         where: vi.fn().mockReturnThis(),
         first: vi.fn()
           .mockResolvedValueOnce(null) // email check
-          .mockResolvedValueOnce(null) // phone check
-          .mockResolvedValueOnce({ // user fetch after insert
-            id: "test-user-id",
-            name: validSignupData.name,
-            email: validSignupData.email,
-            phone: validSignupData.phone,
-            status: "active",
-            created_at: new Date(),
-            updated_at: new Date(),
-          })
-          .mockResolvedValueOnce({ // wallet fetch after insert
-            id: "test-wallet-id",
-            user_id: "test-user-id",
-            balance: "0.0000",
-            currency: "NGN",
-          }),
+          .mockResolvedValueOnce(null), // phone check
         insert: vi.fn().mockResolvedValue([1]),
       }));
 
       vi.mocked(knex).mockImplementation(mockKnexFn as any);
 
-      const result = await AuthService.signup(validSignupData);
+      // Transactional fetches (created user + created wallet)
+      const trxQuery = mockTrx();
+      trxQuery.first
+        .mockResolvedValueOnce({
+          id: "test-user-id",
+          name: validSignupData.name,
+          email: validSignupData.email,
+          phone: validSignupData.phone,
+          status: "active",
+          created_at: new Date(),
+          updated_at: new Date(),
+        })
+        .mockResolvedValueOnce({
+          id: "test-wallet-id",
+          user_id: "test-user-id",
+          balance_decimal: "0.000000",
+          currency: "NGN",
+        });
+
+      const result = await AuthService.createUser(validSignupData);
 
       expect(result.user.email).toBe(validSignupData.email);
       expect(result.user.name).toBe(validSignupData.name);
       expect(result.token).toBeDefined();
       expect(AdjutorService.checkKarma).toHaveBeenCalledWith(validSignupData.bvn, "bvn");
+      expect(AdjutorService.checkKarma).toHaveBeenCalledWith(validSignupData.email, "email");
+      expect(AdjutorService.checkKarma).toHaveBeenCalledWith(validSignupData.phone, "phone");
     });
 
     it("should reject blacklisted user with 403", async () => {
-      // Mock Adjutor check (blacklisted)
+      // Mock Adjutor BVN check (blacklisted) for all calls
       vi.mocked(AdjutorService.checkKarma).mockResolvedValue({
         isFlagged: true,
         identity: validSignupData.bvn,
@@ -114,48 +138,14 @@ describe("AuthService", () => {
       });
 
       await expect(
-        AuthService.signup(validSignupData)
-      ).rejects.toThrow("User is blacklisted");
+        AuthService.createUser(validSignupData)
+      ).rejects.toThrow(/blacklisted/i);
 
       await expect(
-        AuthService.signup(validSignupData)
+        AuthService.createUser(validSignupData)
       ).rejects.toThrow(AppError);
     });
 
-    it("should bypass Adjutor check when SKIP_KARMA_CHECK is enabled", async () => {
-      process.env.SKIP_KARMA_CHECK = "true";
-
-      // Mock database queries
-      const mockKnexFn = vi.fn(() => ({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn()
-          .mockResolvedValueOnce(null) // email check
-          .mockResolvedValueOnce(null) // phone check
-          .mockResolvedValueOnce({ // user fetch
-            id: "test-user-id",
-            name: validSignupData.name,
-            email: validSignupData.email,
-            phone: validSignupData.phone,
-            status: "active",
-            created_at: new Date(),
-            updated_at: new Date(),
-          })
-          .mockResolvedValueOnce({ // wallet fetch
-            id: "test-wallet-id",
-            user_id: "test-user-id",
-            balance: "0.0000",
-            currency: "NGN",
-          }),
-        insert: vi.fn().mockResolvedValue([1]),
-      }));
-
-      vi.mocked(knex).mockImplementation(mockKnexFn as any);
-
-      const result = await AuthService.signup(validSignupData);
-
-      expect(result.user.email).toBe(validSignupData.email);
-      expect(AdjutorService.checkKarma).not.toHaveBeenCalled();
-    });
 
     it("should reject duplicate email with 409", async () => {
       vi.mocked(AdjutorService.checkKarma).mockResolvedValue({
@@ -175,7 +165,7 @@ describe("AuthService", () => {
       vi.mocked(knex).mockImplementation(mockKnexFn as any);
 
       await expect(
-        AuthService.signup(validSignupData)
+        AuthService.createUser(validSignupData)
       ).rejects.toThrow("Email already registered");
     });
 
@@ -188,64 +178,80 @@ describe("AuthService", () => {
         checkedAt: new Date(),
       });
 
-      // Mock existing phone
-      const mockKnexFn = vi.fn(() => ({
-        where: vi.fn().mockReturnThis(),
-        first: vi.fn()
-          .mockResolvedValueOnce(null) // email check passes
-          .mockResolvedValueOnce({ phone: validSignupData.phone }), // phone exists
-      }));
+      // Mock existing phone across two sequential knex calls (email then phone)
+      const first = vi.fn()
+        .mockResolvedValueOnce(null) // email check
+        .mockResolvedValueOnce({ phone: validSignupData.phone }); // phone exists
+      const builder = { where: vi.fn().mockReturnThis(), first } as any;
+      const mockKnexFn = vi.fn(() => builder);
 
       vi.mocked(knex).mockImplementation(mockKnexFn as any);
 
       await expect(
-        AuthService.signup(validSignupData)
+        AuthService.createUser(validSignupData)
       ).rejects.toThrow("Phone number already registered");
     });
 
     it("should create wallet automatically during signup", async () => {
-      vi.mocked(AdjutorService.checkKarma).mockResolvedValue({
-        isFlagged: false,
-        identity: validSignupData.bvn,
-        identityType: "bvn",
-        rawResponse: { status: "success", message: "No record found" },
-        checkedAt: new Date(),
-      });
+      vi.mocked(AdjutorService.checkKarma)
+        .mockResolvedValueOnce({
+          isFlagged: false,
+          identity: validSignupData.bvn,
+          identityType: "bvn",
+          rawResponse: { status: "success", message: "No record found" },
+          checkedAt: new Date(),
+        })
+        .mockResolvedValueOnce({
+          isFlagged: false,
+          identity: validSignupData.email,
+          identityType: "email",
+          rawResponse: { status: "success", message: "No record found" },
+          checkedAt: new Date(),
+        })
+        .mockResolvedValueOnce({
+          isFlagged: false,
+          identity: validSignupData.phone,
+          identityType: "phone",
+          rawResponse: { status: "success", message: "No record found" },
+          checkedAt: new Date(),
+        });
 
-      const mockInsert = vi.fn().mockResolvedValue([1]);
-      const mockKnexFn = vi.fn(() => ({
+      const mockInsertTrx = mockTrx().insert;
+      const builder2 = {
         where: vi.fn().mockReturnThis(),
-        first: vi.fn()
-          .mockResolvedValueOnce(null)
-          .mockResolvedValueOnce(null)
-          .mockResolvedValueOnce({
-            id: "test-user-id",
-            name: validSignupData.name,
-            email: validSignupData.email,
-            phone: validSignupData.phone,
-            status: "active",
-            created_at: new Date(),
-            updated_at: new Date(),
-          })
-          .mockResolvedValueOnce({
-            id: "test-wallet-id",
-            user_id: "test-user-id",
-            balance: "0.0000",
-            currency: "NGN",
-          }),
-        insert: mockInsert,
-      }));
+        first: vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(null),
+        insert: vi.fn().mockResolvedValue([1]),
+      } as any;
+      const mockKnexFn2 = vi.fn(() => builder2);
 
-      vi.mocked(knex).mockImplementation(mockKnexFn as any);
+      vi.mocked(knex).mockImplementation(mockKnexFn2 as any);
 
-      await AuthService.signup(validSignupData);
+      const trxQuery2 = mockTrx();
+      trxQuery2.first
+        .mockResolvedValueOnce({
+          id: "test-user-id",
+          name: validSignupData.name,
+          email: validSignupData.email,
+          phone: validSignupData.phone,
+          status: "active",
+          created_at: new Date(),
+          updated_at: new Date(),
+        })
+        .mockResolvedValueOnce({
+          id: "test-wallet-id",
+          user_id: "test-user-id",
+          balance_decimal: "0.000000",
+          currency: "NGN",
+        });
 
-      // Should have called insert twice (user + wallet)
-      expect(mockInsert).toHaveBeenCalledTimes(2);
+      await AuthService.createUser(validSignupData);
+
+      // Should have called transaction-insert twice (user + wallet)
+      expect(mockInsertTrx).toHaveBeenCalledTimes(2);
     });
   });
 
-  describe("login", () => {
+  describe("loginUser", () => {
     const validLoginData = {
       email: "[email protected]",
       phone: "+2348012345678",
@@ -269,7 +275,7 @@ describe("AuthService", () => {
 
       vi.mocked(knex).mockImplementation(mockKnexFn as any);
 
-      const result = await AuthService.login(validLoginData);
+      const result = await AuthService.loginUser(validLoginData);
 
       expect(result.user.email).toBe(validLoginData.email);
       expect(result.token).toBeDefined();
@@ -284,7 +290,7 @@ describe("AuthService", () => {
       vi.mocked(knex).mockImplementation(mockKnexFn as any);
 
       await expect(
-        AuthService.login(validLoginData)
+        AuthService.loginUser(validLoginData)
       ).rejects.toThrow("Invalid credentials");
     });
 
@@ -307,8 +313,8 @@ describe("AuthService", () => {
       vi.mocked(knex).mockImplementation(mockKnexFn as any);
 
       await expect(
-        AuthService.login(validLoginData)
-      ).rejects.toThrow("User account is blocked");
+        AuthService.loginUser(validLoginData)
+      ).rejects.toThrow("Account is blocked. Please contact support.");
     });
 
     it("should reject blacklisted user with 403", async () => {
@@ -330,8 +336,8 @@ describe("AuthService", () => {
       vi.mocked(knex).mockImplementation(mockKnexFn as any);
 
       await expect(
-        AuthService.login(validLoginData)
-      ).rejects.toThrow("User account is blacklisted");
+        AuthService.loginUser(validLoginData)
+      ).rejects.toThrow("Account is blacklisted and cannot access services.");
     });
 
     it("should reject login with missing credentials", async () => {
@@ -344,7 +350,7 @@ describe("AuthService", () => {
 
       // Should throw because no user found (credentials don't match)
       await expect(
-        AuthService.login({ email: "", phone: "" })
+        AuthService.loginUser({ email: "", phone: "" })
       ).rejects.toThrow();
     });
   });

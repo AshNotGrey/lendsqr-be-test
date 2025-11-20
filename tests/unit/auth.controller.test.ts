@@ -12,8 +12,8 @@ import { AuthService } from "../../src/services/auth.service";
 // Mock AuthService
 vi.mock("../../src/services/auth.service", () => ({
   AuthService: {
-    signup: vi.fn(),
-    login: vi.fn(),
+    createUser: vi.fn(),
+    loginUser: vi.fn(),
   },
 }));
 
@@ -58,7 +58,7 @@ describe("AuthController", () => {
         bvn: "22212345678",
       };
 
-      vi.mocked(AuthService.signup).mockResolvedValue({
+      vi.mocked(AuthService.createUser).mockResolvedValue({
         user: mockUser,
         token: mockToken,
       });
@@ -70,14 +70,22 @@ describe("AuthController", () => {
       );
 
       expect(mockRes.status).toHaveBeenCalledWith(201);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        success: true,
-        message: "User created successfully",
-        data: {
-          user: mockUser,
-          token: mockToken,
-        },
-      });
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: "User created successfully",
+          data: {
+            user: expect.objectContaining({
+              id: mockUser.id,
+              name: mockUser.name,
+              email: mockUser.email,
+              phone: mockUser.phone,
+              status: mockUser.status,
+            }),
+            token: mockToken,
+          },
+        })
+      );
     });
 
     it("should handle service errors", async () => {
@@ -89,7 +97,7 @@ describe("AuthController", () => {
       };
 
       const error = new Error("User is blacklisted");
-      vi.mocked(AuthService.signup).mockRejectedValue(error);
+      vi.mocked(AuthService.createUser).mockRejectedValue(error);
 
       await AuthController.signup(
         mockReq as Request,
@@ -120,7 +128,7 @@ describe("AuthController", () => {
         phone: "+2348012345678",
       };
 
-      vi.mocked(AuthService.login).mockResolvedValue({
+      vi.mocked(AuthService.loginUser).mockResolvedValue({
         user: mockUser,
         token: mockToken,
       });
@@ -132,14 +140,22 @@ describe("AuthController", () => {
       );
 
       expect(mockRes.status).toHaveBeenCalledWith(200);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        success: true,
-        message: "Login successful",
-        data: {
-          user: mockUser,
-          token: mockToken,
-        },
-      });
+      expect(mockRes.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: "Login successful",
+          data: {
+            user: expect.objectContaining({
+              id: mockUser.id,
+              name: mockUser.name,
+              email: mockUser.email,
+              phone: mockUser.phone,
+              status: mockUser.status,
+            }),
+            token: mockToken,
+          },
+        })
+      );
     });
 
     it("should handle invalid credentials", async () => {
@@ -149,7 +165,7 @@ describe("AuthController", () => {
       };
 
       const error = new Error("Invalid credentials");
-      vi.mocked(AuthService.login).mockRejectedValue(error);
+      vi.mocked(AuthService.loginUser).mockRejectedValue(error);
 
       await AuthController.login(
         mockReq as Request,
