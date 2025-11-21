@@ -189,18 +189,6 @@ Demo Credit is a mobile lending app that requires wallet functionality. This bac
 
 - [Open the interactive ER diagram](https://dbdesigner.page.link/o5eQaqyzZq2vM4Ec7) (DBDesigner public share)
 
-```html
-<iframe
-  width="100%"
-  height="500px"
-  allowtransparency="true"
-  allowfullscreen="true"
-  scrolling="no"
-  title="{{ $t('sharable_link.embedded_db_designer_iframe') }}"
-  frameborder="0"
-  src="https://erd.dbdesigner.net/designer/schema/1763542641-lendsqr-be-test?embed=true">
-</iframe>
-```
 
 - Static snapshot for offline contexts (preview below and file at `src/docs/schemas/lendsqr-be-test.png`):
 
@@ -706,14 +694,14 @@ See `tests/README.md` for detailed testing documentation.
 
 ### Production Checklist
 
-- [ ] Set `NODE_ENV=production`
-- [ ] Use strong `HMAC_SECRET` (32+ characters)
-- [ ] Set `ADJUTOR_MODE=live`
-- [ ] Configure production database
-- [ ] Run migrations
-- [ ] Set up SSL/TLS
-- [ ] Configure logging
-- [ ] Set up monitoring
+- ✅ Set `NODE_ENV=production`
+- ✅ Use strong `HMAC_SECRET` (32+ characters)
+- ✅ Set `ADJUTOR_MODE=live`
+- ✅ Configure production database
+- ✅ Run migrations
+- ✅ Set up SSL/TLS
+- ✅ Configure logging
+- ✅ Set up monitoring
 
 ### Render Deployment
 
